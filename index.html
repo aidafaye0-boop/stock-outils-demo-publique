@@ -312,7 +312,7 @@ svg text { font-family: var(--font-body); }
         MACHINES.map(function (m) { return '<option' + (S.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></div>' +
       '<div class="state"><span class="dot"></span>Prêt : chaque scan = ' + (out ? "SORTIE" : "ENTRÉE") + ' de 1</div>' +
       '<input type="text" class="code" id="code" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
-      '<p class="help"><b>Chaque scan enregistre aussitôt 1 outil</b> dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0122</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
+      '<p class="help"><b>Chaque scan enregistre aussitôt 1 outil</b> dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
       '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' +
         S.tools.map(function (t) { return '<button type="button" data-scan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") +
       '</div></div>' +
@@ -418,6 +418,7 @@ svg text { font-family: var(--font-body); }
 </script>
 </body>
 </html>
+
 
 
 
