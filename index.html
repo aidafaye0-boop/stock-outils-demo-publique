@@ -109,6 +109,11 @@ tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
 .pill.r { background: var(--red); } .pill.y { background: var(--yellow); color: #17202c; } .pill.g { background: var(--green); } .pill.n { background: var(--grey); }
 .qplus { color: var(--green-btn); font-weight: 600; } .qmin { color: var(--red-btn); font-weight: 600; }
 
+/* Saisie rapide */
+.inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
+.inv input.changed { background: #fff7d6; border-color: #fab219; }
+.btn-save { font: inherit; font-weight: 600; padding: 10px 26px; border: 0; border-radius: 8px; background: var(--navy); color: #fff; cursor: pointer; }
+
 /* Charts */
 .charts { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
@@ -144,6 +149,7 @@ svg text { font-family: var(--font-body); }
       <a href="#accueil" data-v="accueil">Accueil</a>
       <a href="#scan" data-v="scan">Scan entrée / sortie</a>
       <a href="#seuils" data-v="seuils">Tableau des seuils</a>
+      <a href="#saisie" data-v="saisie">Saisie rapide</a>
       <a href="#historique" data-v="historique">Historique</a>
     </nav>
   </div>
@@ -274,6 +280,7 @@ svg text { font-family: var(--font-body); }
         '<div class="box"><div class="hd">Stock outils</div><div class="bd"><div class="shortcuts">' +
           '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outil</span></a>' +
           '<a href="#seuils"><b>Tableau des seuils</b><span>Graphiques et détail</span></a>' +
+          '<a href="#saisie"><b>Saisie rapide</b><span>Stock et seuils en masse</span></a>' +
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
         '</div></div></div>' +
         '<div class="box"><div class="hd">Aujourd\'hui</div><div class="bd"><div class="tiles">' +
@@ -388,7 +395,63 @@ svg text { font-family: var(--font-body); }
       '</tbody></table></div></div>';
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vScan, seuils: vSeuils, historique: vHisto };
+  // Même logique que inventaire.php : un écart de stock devient un mouvement « Inventaire », seuil/désiré mis à jour
+  var saisieMsg = null;
+  function vSaisie() {
+    var h = '<h1>Saisie rapide : stock et seuils</h1>' +
+      '<p class="intro">Tapez le <b>stock compté</b> en magasin pour chaque outil, puis réglez le <b>seuil mini</b> et le <b>stock désiré</b>. Laissez « Stock compté » vide pour ne pas toucher au stock ; videz un seuil pour le supprimer. Un seul bouton enregistre tout ; chaque écart de stock est tracé dans l\'historique comme « Inventaire ».</p>';
+    if (saisieMsg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow">' + esc(saisieMsg) + '</div></div>'; saisieMsg = null; }
+    h += '<form id="saisieform" autocomplete="off"><div class="box"><div class="tablewrap"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th></tr></thead><tbody>' +
+      S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) {
+        var sv = t.seuil > 0 ? t.seuil : "", dv = t.desired > 0 ? t.desired : "";
+        return '<tr><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td class="num">' + t.stock + '</td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="counted" data-ref="' + esc(t.ref) + '" placeholder="' + t.stock + '"></td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="seuil" data-ref="' + esc(t.ref) + '" data-orig="' + sv + '" value="' + sv + '"></td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="desired" data-ref="' + esc(t.ref) + '" data-orig="' + dv + '" value="' + dv + '"></td></tr>';
+      }).join("") +
+      '</tbody></table></div></div><p style="text-align:center;margin:16px 0"><button type="submit" class="btn-save">Enregistrer tout</button></p></form>';
+    return h;
+  }
+
+  function wireSaisie() {
+    var form = document.getElementById("saisieform");
+    form.querySelectorAll("input").forEach(function (el) {
+      el.addEventListener("input", function () {
+        var orig = el.dataset.orig !== undefined ? el.dataset.orig : "";
+        el.classList.toggle("changed", el.value !== orig);
+      });
+    });
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var nbm = 0, nbs = 0, errs = [], plan = [];
+      S.tools.forEach(function (t) {
+        var c = form.querySelector('[data-f="counted"][data-ref="' + t.ref + '"]').value.trim();
+        var s = form.querySelector('[data-f="seuil"][data-ref="' + t.ref + '"]').value.trim();
+        var d = form.querySelector('[data-f="desired"][data-ref="' + t.ref + '"]').value.trim();
+        var p = { t: t };
+        if (c !== "") { var q = parseFloat(c); if (q < 0) { errs.push(t.ref + " : quantité négative ignorée"); } else if (q !== t.stock) { p.stock = q; } }
+        var sv = s === "" ? 0 : parseInt(s, 10), dv = d === "" ? 0 : parseInt(d, 10);
+        if (sv < 0 || dv < 0) { errs.push(t.ref + " : valeur négative ignorée"); }
+        else { if (sv !== (t.seuil || 0)) { p.seuil = sv; } if (dv !== (t.desired || 0)) { p.desired = dv; } }
+        plan.push(p);
+      });
+      if (errs.length) { saisieMsg = null; alert("Rien n'a été enregistré à cause d'erreurs :\n" + errs.join("\n")); return; }
+      plan.forEach(function (p) {
+        if (p.stock !== undefined) {
+          var delta = p.stock - p.t.stock;
+          S.moves.unshift({ t: nowIso(), ref: p.t.ref, qty: delta, label: "Inventaire (saisie rapide) : " + p.t.stock + " → " + p.stock, who: "vous (démo)" });
+          p.t.stock = p.stock; nbm++;
+        }
+        if (p.seuil !== undefined) { p.t.seuil = p.seuil; nbs++; }
+        if (p.desired !== undefined) { p.t.desired = p.desired; nbs++; }
+      });
+      save();
+      saisieMsg = "Enregistré : " + nbm + " mouvement(s) de stock, " + nbs + " seuil(s) modifié(s).";
+      render(); window.scrollTo(0, 0);
+    });
+  }
+
+  var VIEWS = { accueil: vAccueil, scan: vScan, seuils: vSeuils, saisie: vSaisie, historique: vHisto };
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
@@ -396,6 +459,7 @@ svg text { font-family: var(--font-body); }
     el.innerHTML = VIEWS[v]();
     document.querySelectorAll("nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-v") === v); });
     if (v === "scan") { wireScan(); }
+    if (v === "saisie") { wireSaisie(); }
   }
 
   function wireScan() {
