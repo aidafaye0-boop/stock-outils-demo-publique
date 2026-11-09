@@ -109,6 +109,8 @@ tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
 .pill.r { background: var(--red); } .pill.y { background: var(--yellow); color: #17202c; } .pill.g { background: var(--green); } .pill.n { background: var(--grey); }
 .qplus { color: var(--green-btn); font-weight: 600; } .qmin { color: var(--red-btn); font-weight: 600; }
 
+.qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: var(--ink); }
+
 /* Saisie rapide */
 .inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
 .inv input.changed { background: #fff7d6; border-color: #fab219; }
@@ -232,21 +234,28 @@ svg text { font-family: var(--font-body); }
     return r;
   }
 
-  function scan(code) {
+  // Quantité du prochain scan : 1 par défaut, jamais mémorisée (remise à 1 après chaque scan), comme scan.php
+  function readQty() {
+    var e = document.getElementById("qty"), q = e ? parseInt(e.value, 10) : 1;
+    return q > 0 ? Math.min(q, 999) : 1;
+  }
+
+  function scan(code, q) {
     code = String(code).trim().toUpperCase();
+    q = q || readQty();
     candidates = null;
     if (!code) { return; }
     var t = tool(code);
     if (!t && code.length >= 2) {
       var m = S.tools.filter(function (x) { return x.ref.slice(-code.length) === code; });
-      if (m.length === 1) { t = m[0]; } else if (m.length > 1) { candidates = { code: code, list: m }; flash = null; render(); return; }
+      if (m.length === 1) { t = m[0]; } else if (m.length > 1) { candidates = { code: code, list: m, qty: q }; flash = null; render(); return; }
     }
     if (!t) {
       flash = { ok: false, msg: "Code inconnu : « " + code + " ». Vérifiez l'étiquette ou tapez la référence de l'outil." };
       undoInfo = null;
     } else {
-      flash = move(t, 1, S.sens, S.machine);
-      undoInfo = flash.ok ? { ref: t.ref, sens: S.sens, machine: S.machine } : null;
+      flash = move(t, q, S.sens, S.machine);
+      undoInfo = flash.ok ? { ref: t.ref, sens: S.sens, machine: S.machine, qty: q } : null;
     }
     beep(flash.ok);
     render();
@@ -255,8 +264,8 @@ svg text { font-family: var(--font-body); }
   function undo() {
     if (!undoInfo) { return; }
     var u = undoInfo; undoInfo = null;
-    var r = move(tool(u.ref), 1, u.sens === 1 ? 0 : 1, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + " scan");
-    if (r.ok) { r.msg = "Mouvement annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de 1 × " + u.ref + " corrigée."; }
+    var r = move(tool(u.ref), u.qty, u.sens === 1 ? 0 : 1, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + " scan");
+    if (r.ok) { r.msg = "Mouvement annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de " + u.qty + " × " + u.ref + " corrigée."; }
     flash = r; beep(r.ok); render();
   }
 
@@ -317,9 +326,10 @@ svg text { font-family: var(--font-body); }
       '</div>' +
       '<div class="row"><label for="machine" class="muted">Machine :</label><select id="machine"><option value="">Aucune</option>' +
         MACHINES.map(function (m) { return '<option' + (S.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></div>' +
-      '<div class="state"><span class="dot"></span>Prêt : chaque scan = ' + (out ? "SORTIE" : "ENTRÉE") + ' de 1</div>' +
+      '<div class="row"><label for="qty" class="muted">Quantité :</label><input type="number" id="qty" class="qty" min="1" max="999" step="1" value="1"></div>' +
+      '<div class="state"><span class="dot"></span><span id="statetxt">Prêt : chaque scan = ' + (out ? "SORTIE" : "ENTRÉE") + ' de 1</span></div>' +
       '<input type="text" class="code" id="code" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
-      '<p class="help"><b>Chaque scan enregistre aussitôt 1 outil</b> dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
+      '<p class="help"><b>Chaque scan enregistre aussitôt la quantité indiquée</b> (1 par défaut, remise à 1 après chaque scan) dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
       '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' +
         S.tools.map(function (t) { return '<button type="button" data-scan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") +
       '</div></div>' +
@@ -468,7 +478,10 @@ svg text { font-family: var(--font-body); }
     document.querySelectorAll("[data-sens]").forEach(function (b) { b.addEventListener("click", function () { S.sens = +b.getAttribute("data-sens"); save(); render(); }); });
     document.getElementById("machine").addEventListener("change", function (e) { S.machine = e.target.value; save(); document.getElementById("code").focus(); });
     document.querySelectorAll("[data-scan]").forEach(function (b) { b.addEventListener("click", function () { scan(b.getAttribute("data-scan")); }); });
-    document.querySelectorAll("[data-pick]").forEach(function (b) { b.addEventListener("click", function () { scan(b.getAttribute("data-pick")); }); });
+    document.querySelectorAll("[data-pick]").forEach(function (b) { b.addEventListener("click", function () { scan(b.getAttribute("data-pick"), candidates && candidates.qty); }); });
+    var qe = document.getElementById("qty");
+    qe.addEventListener("input", function () { document.getElementById("statetxt").textContent = "Prêt : chaque scan = " + (S.sens === 1 ? "SORTIE" : "ENTRÉE") + " de " + readQty(); });
+    qe.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); code.focus(); } });
     var u = document.getElementById("undo"); if (u) { u.addEventListener("click", undo); }
     if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
   }
