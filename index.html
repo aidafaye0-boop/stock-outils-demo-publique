@@ -111,6 +111,10 @@ tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
 
 .qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: var(--ink); }
 
+/* Filigrane « Version test » (comme lib/rmecastock.lib.php dans le module) */
+.rm-test-wm { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: min(13vw, 150px); font-weight: 700; letter-spacing: .08em; white-space: nowrap; color: rgba(208,59,59,.11); pointer-events: none; user-select: none; z-index: 9999; }
+.rm-test-strip { background: #fff6e0; border-left: 6px solid #fab219; padding: 8px 14px; margin: 14px 0 0; border-radius: 6px; font-size: 14.5px; }
+
 /* Saisie rapide */
 .inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
 .inv input.changed { background: #fff7d6; border-color: #fab219; }
@@ -156,6 +160,8 @@ svg text { font-family: var(--font-body); }
     </nav>
   </div>
 </header>
+<div class="gutter"><div class="rm-test-strip" role="note"><b>Version test</b> : outil en phase d'essai, pas encore utilisé en production.</div></div>
+<div class="rm-test-wm" aria-hidden="true">VERSION TEST</div>
 <main class="gutter" id="view"></main>
 
 <script>
