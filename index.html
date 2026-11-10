@@ -329,6 +329,7 @@ svg text { font-family: var(--font-body); }
       '<div class="row"><label for="qty" class="muted">Quantité :</label><input type="number" id="qty" class="qty" min="1" max="999" step="1" value="1"></div>' +
       '<div class="state"><span class="dot"></span><span id="statetxt">Prêt : chaque scan = ' + (out ? "SORTIE" : "ENTRÉE") + ' de 1</span></div>' +
       '<input type="text" class="code" id="code" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
+      '<input type="submit" value="OK" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
       '<p class="help"><b>Chaque scan enregistre aussitôt la quantité indiquée</b> (1 par défaut, remise à 1 après chaque scan) dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
       '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' +
         S.tools.map(function (t) { return '<button type="button" data-scan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") +
