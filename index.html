@@ -535,18 +535,20 @@ svg text { font-family: var(--font-body); }
     if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
   }
 
+  // Met à jour l'affichage sans faire sauter la page (la position de défilement est conservée)
+  function keepScroll() { var y = window.scrollY; render(); window.scrollTo(0, y); }
   function wireSeuils() {
     document.querySelectorAll("[data-st]").forEach(function (sel) {
       sel.addEventListener("change", function () {
         var ref = sel.getAttribute("data-st"), note = document.querySelector('[data-note="' + ref + '"]').value.trim();
         if (sel.value === "") { delete S.status[ref]; } else { S.status[ref] = { statut: sel.value, note: note, t: nowIso() }; }
-        save(); render();
+        save(); keepScroll();
       });
     });
     document.querySelectorAll("[data-note]").forEach(function (inp) {
       inp.addEventListener("change", function () {
         var ref = inp.getAttribute("data-note");
-        if (S.status[ref]) { S.status[ref].note = inp.value.trim(); S.status[ref].t = nowIso(); save(); render(); }
+        if (S.status[ref]) { S.status[ref].note = inp.value.trim(); S.status[ref].t = nowIso(); save(); keepScroll(); }
       });
     });
   }
