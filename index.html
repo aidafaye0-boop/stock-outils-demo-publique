@@ -155,6 +155,7 @@ svg text { font-family: var(--font-body); }
       <a href="#accueil" data-v="accueil">Accueil</a>
       <a href="#scan" data-v="scan">Scan entrée / sortie</a>
       <a href="#seuils" data-v="seuils">Tableau des seuils</a>
+      <a href="#utilisation" data-v="utilisation">Utilisation des outils</a>
       <a href="#saisie" data-v="saisie">Saisie rapide</a>
       <a href="#historique" data-v="historique">Historique</a>
     </nav>
@@ -183,11 +184,27 @@ svg text { font-family: var(--font-body); }
     ["2026-11-08T09:05:30", "0106", -1, "Sortie scan - Machine : Tour 1"]
   ];
   var KEY = "stock-outils-demo-v1";
+  // [jours en arrière, heure, outil, quantité, libellé] : sorties plus anciennes (fictives) pour le classement d'utilisation
+  var EXTRA_MOVES = [
+    [2, 10, "0103", -2, "Sortie OF 4821 - Machine : Fraiseuse 1"], [3, 14, "0105", -1, "Sortie scan - Machine : Tour 2"], [5, 9, "0103", -1, "Sortie scan - Machine : Fraiseuse 2"],
+    [6, 15, "0107", -3, "Sortie OF 4817 - Machine : Tour 1"], [9, 11, "0103", -2, "Sortie OF 4809 - Machine : Fraiseuse 1"], [12, 8, "0109", -1, "Sortie scan - Machine : Fraiseuse 2"],
+    [14, 13, "0107", -2, "Sortie OF 4802 - Machine : Tour 1"], [17, 10, "0105", -2, "Sortie OF 4795 - Machine : Tour 2"], [21, 16, "0103", -3, "Sortie OF 4788 - Machine : Fraiseuse 1"],
+    [24, 9, "0110", -1, "Sortie scan - Machine : Fraiseuse 2"], [28, 14, "0107", -2, "Sortie OF 4776 - Machine : Tour 1"], [33, 11, "0103", -2, "Sortie OF 4761 - Machine : Fraiseuse 2"],
+    [38, 15, "0105", -1, "Sortie scan - Machine : Tour 2"], [45, 10, "0108", -1, "Sortie scan - Machine : Fraiseuse 1"], [52, 9, "0103", -4, "Sortie OF 4722 - Machine : Fraiseuse 1"],
+    [58, 14, "0107", -2, "Sortie OF 4710 - Machine : Tour 1"], [66, 11, "0114", -1, "Sortie scan - Machine : Tour 2"], [74, 15, "0105", -2, "Sortie OF 4685 - Machine : Tour 2"],
+    [81, 10, "0103", -3, "Sortie OF 4660 - Machine : Fraiseuse 2"], [88, 9, "0116", -1, "Sortie scan - Machine : Fraiseuse 1"]
+  ];
+  function extraMoves() {
+    return EXTRA_MOVES.map(function (m) {
+      var d = new Date(); d.setDate(d.getDate() - m[0]); d.setHours(m[1], 0, 0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return { t: d.toISOString().slice(0, 19), ref: "OUT-" + m[2], qty: m[3], label: m[4], who: "admin" };
+    });
+  }
 
   function fresh() {
     return {
       tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10 }; }),
-      moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }),
+      moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }).concat(extraMoves()).sort(function (a, b) { return a.t < b.t ? 1 : -1; }),
       status: {},                                          // suivi de réapprovisionnement : ref → { statut, note, t }
       of: { no: "", sens: 1, machine: "", lines: [] }      // liste en cours du « Scan par OF »
     };
@@ -267,6 +284,7 @@ svg text { font-family: var(--font-body); }
         '<div class="box"><div class="hd">Stock outils</div><div class="bd"><div class="shortcuts">' +
           '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outils</span></a>' +
           '<a href="#seuils"><b>Tableau des seuils</b><span>Graphiques et détail</span></a>' +
+          '<a href="#utilisation"><b>Utilisation</b><span>Plus et moins utilisés</span></a>' +
           '<a href="#saisie"><b>Saisie rapide</b><span>Stock et seuils en masse</span></a>' +
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
         '</div></div></div>' +
@@ -493,6 +511,43 @@ svg text { font-family: var(--font-body); }
     });
   }
 
+  /* ---------- Utilisation des outils : plus et moins utilisés (comme utilisation.php) ---------- */
+  var usePer = 30;
+  function vUtil() {
+    var since = new Date(); since.setDate(since.getDate() - usePer); since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    var sinceIso = since.toISOString().slice(0, 19), total = 0;
+    var rows = S.tools.map(function (t) {
+      var exits = 0, cancels = 0, last = "";
+      S.moves.forEach(function (m) {
+        if (m.ref !== t.ref) { return; }
+        var isExit = m.qty < 0 && m.label.indexOf("Annulation") !== 0 && m.label.indexOf("Inventaire") !== 0;
+        if (isExit && m.t > last) { last = m.t; }
+        if (m.t < sinceIso) { return; }
+        if (isExit) { exits -= m.qty; }
+        if (m.qty > 0 && m.label.indexOf("Annulation sortie") === 0) { cancels += m.qty; }
+      });
+      var used = Math.max(0, exits - cancels); total += used;
+      return { t: t, used: used, last: last };
+    });
+    var most = rows.filter(function (r) { return r.used > 0; }).sort(function (a, b) { return b.used - a.used || a.t.ref.localeCompare(b.t.ref); });
+    var least = rows.slice().sort(function (a, b) { return a.used - b.used || (a.last || "").localeCompare(b.last || "") || b.t.stock - a.t.stock || a.t.ref.localeCompare(b.t.ref); });
+    var top = most.length ? most[0].used : 1;
+    var h = '<h1>Utilisation des outils</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px">' +
+      '<span class="muted">Période :</span>' + [7, 30, 90].map(function (d) { return '<button type="button" class="btn-undo" data-per="' + d + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (d === usePer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + d + ' jours</button>'; }).join("") +
+      '<span class="muted">Total sorti : <b>' + total + '</b> pièce(s)</span></div><div class="grid2">';
+    h += '<div class="box"><div class="hd">Les plus utilisés (' + usePer + ' jours)</div><div class="bd">' +
+      (most.length ? most.slice(0, 8).map(function (r) { return '<div class="bar" style="grid-template-columns:90px 1fr 28px"><span title="' + esc(r.t.label) + '">' + esc(r.t.ref) + '</span><span class="track"><span class="fill" style="display:block;width:' + Math.round(r.used / top * 100) + '%"></span></span><b>' + r.used + '</b></div>'; }).join("") : '<p class="muted">Aucune sortie sur cette période.</p>') +
+      '</div></div>';
+    h += '<div class="box"><div class="hd">Les moins utilisés (' + usePer + ' jours)</div><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Sorti</th><th>Dernière sortie</th><th class="num">Stock</th></tr></thead><tbody>' +
+      least.slice(0, 8).map(function (r) { return '<tr><td>' + esc(r.t.ref) + ' <span class="muted">' + esc(r.t.label) + '</span></td><td class="num">' + (r.used ? '<b>' + r.used + '</b>' : '<span class="muted">0</span>') + '</td><td>' + (r.last ? fmtDate(r.last).slice(0, 10) : '<span class="muted">jamais sorti</span>') + '</td><td class="num">' + r.t.stock + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div></div>' +
+      '<p class="muted" style="font-size:13.5px">Utilisation = pièces sorties du magasin sur la période, sans les corrections d\'inventaire et sans les sorties annulées. Un outil très stocké mais rarement sorti est un candidat pour réduire son stock désiré ; un outil très utilisé avec peu de stock mérite un seuil mini plus haut.</p>';
+    return h;
+  }
+  function wireUtil() {
+    document.querySelectorAll("[data-per]").forEach(function (b) { b.addEventListener("click", function () { usePer = +b.getAttribute("data-per"); render(); }); });
+  }
+
   function vHisto() {
     return '<h1>Historique des mouvements</h1><p class="intro">Qui, quand, quel outil, combien et pour quelle machine. Les annulations restent visibles.</p>' +
       '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
@@ -557,7 +612,7 @@ svg text { font-family: var(--font-body); }
     });
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, saisie: vSaisie, historique: vHisto };
+  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, saisie: vSaisie, historique: vHisto };
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
@@ -567,6 +622,7 @@ svg text { font-family: var(--font-body); }
     document.querySelectorAll("nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-v") === (v === "of" ? "scan" : v)); });
     if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
+    if (v === "utilisation") { wireUtil(); }
     if (v === "saisie") { wireSaisie(); }
   }
 
