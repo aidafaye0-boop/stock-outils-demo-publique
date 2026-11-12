@@ -154,7 +154,6 @@ svg text { font-family: var(--font-body); }
     <nav aria-label="Pages">
       <a href="#accueil" data-v="accueil">Accueil</a>
       <a href="#scan" data-v="scan">Scan entrée / sortie</a>
-      <a href="#of" data-v="of">Scan par OF</a>
       <a href="#seuils" data-v="seuils">Tableau des seuils</a>
       <a href="#saisie" data-v="saisie">Saisie rapide</a>
       <a href="#historique" data-v="historique">Historique</a>
@@ -189,7 +188,6 @@ svg text { font-family: var(--font-body); }
     return {
       tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10 }; }),
       moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }),
-      sens: 1, machine: "",
       status: {},                                          // suivi de réapprovisionnement : ref → { statut, note, t }
       of: { no: "", sens: 1, machine: "", lines: [] }      // liste en cours du « Scan par OF »
     };
@@ -202,10 +200,7 @@ svg text { font-family: var(--font-body); }
   if (!S.of) { S.of = { no: "", sens: 1, machine: "", lines: [] }; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
-  var flash = null;      // bandeau du dernier résultat
-  var undoInfo = null;   // seul le tout dernier mouvement est annulable
-  var candidates = null;
-  var ofFlash = null, ofResult = null, ofUndoInfo = null, ofCands = null;   // Scan par OF
+  var ofFlash = null, ofResult = null, ofUndoInfo = null, ofCands = null;   // Scan entrée / sortie (liste)
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function tool(ref) { for (var i = 0; i < S.tools.length; i++) { if (S.tools[i].ref === ref) { return S.tools[i]; } } return null; }
@@ -252,41 +247,6 @@ svg text { font-family: var(--font-body); }
     return r;
   }
 
-  // Quantité du prochain scan : 1 par défaut, jamais mémorisée (remise à 1 après chaque scan), comme scan.php
-  function readQty() {
-    var e = document.getElementById("qty"), q = e ? parseInt(e.value, 10) : 1;
-    return q > 0 ? Math.min(q, 999) : 1;
-  }
-
-  function scan(code, q) {
-    code = String(code).trim().toUpperCase();
-    q = q || readQty();
-    candidates = null;
-    if (!code) { return; }
-    var t = tool(code);
-    if (!t && code.length >= 2) {
-      var m = S.tools.filter(function (x) { return x.ref.slice(-code.length) === code; });
-      if (m.length === 1) { t = m[0]; } else if (m.length > 1) { candidates = { code: code, list: m, qty: q }; flash = null; render(); return; }
-    }
-    if (!t) {
-      flash = { ok: false, msg: "Code inconnu : « " + code + " ». Vérifiez l'étiquette ou tapez la référence de l'outil." };
-      undoInfo = null;
-    } else {
-      flash = move(t, q, S.sens, S.machine);
-      undoInfo = flash.ok ? { ref: t.ref, sens: S.sens, machine: S.machine, qty: q } : null;
-    }
-    beep(flash.ok);
-    render();
-  }
-
-  function undo() {
-    if (!undoInfo) { return; }
-    var u = undoInfo; undoInfo = null;
-    var r = move(tool(u.ref), u.qty, u.sens === 1 ? 0 : 1, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + " scan");
-    if (r.ok) { r.msg = "Mouvement annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de " + u.qty + " × " + u.ref + " corrigée."; }
-    flash = r; beep(r.ok); render();
-  }
-
   /* ---------- Vues ---------- */
   function vAccueil() {
     var today = nowIso().slice(0, 10), out = 0, inn = 0, nomach = 0;
@@ -305,8 +265,7 @@ svg text { font-family: var(--font-body); }
       '<p class="intro">Démonstration de suivi des outils coupants pour un atelier d\'usinage. Chaque sortie ou retour d\'outil est scanné ; le stock et les alertes de seuil se mettent à jour tout seuls. Essayez la page <a href="#scan">Scan</a> : le tableau des seuils change en direct.</p>' +
       '<div class="grid2">' +
         '<div class="box"><div class="hd">Stock outils</div><div class="bd"><div class="shortcuts">' +
-          '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outil</span></a>' +
-          '<a href="#of"><b>Scan par OF</b><span>Liste d\'outils d\'un OF</span></a>' +
+          '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outils</span></a>' +
           '<a href="#seuils"><b>Tableau des seuils</b><span>Graphiques et détail</span></a>' +
           '<a href="#saisie"><b>Saisie rapide</b><span>Stock et seuils en masse</span></a>' +
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
@@ -324,43 +283,6 @@ svg text { font-family: var(--font-body); }
           (consoList.length ? consoList.map(function (c) { return '<div class="bar"><span>' + esc(c[0].slice(-4)) + '</span><span class="track"><span class="fill" style="display:block;width:' + Math.round(c[1] / cmax * 100) + '%"></span></span><b class="num">' + c[1] + '</b></div>'; }).join("") : '<p class="muted">Aucune sortie pour l\'instant.</p>') +
         '</div></div>' +
       '</div>';
-  }
-
-  function vScan() {
-    var h = '<h1>Scan entrée / sortie</h1><div class="scanwrap">';
-    if (flash) {
-      h += '<div class="banner ' + (flash.ok ? "ok" : "ko") + '" role="status"><span class="ic">' + (flash.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(flash.msg) + '</b>' + (flash.detail ? '<br>' + esc(flash.detail) : '') + '</div>' +
-        (flash.ok && undoInfo ? '<button type="button" class="btn-undo" id="undo">↶ Annuler ce mouvement</button>' : '') + '</div>';
-      if (flash.warn) { h += '<div class="banner warn"><span class="ic">▲</span><div class="grow">' + esc(flash.warn) + '</div></div>'; }
-    }
-    if (candidates) {
-      h += '<div class="banner warn"><span class="ic">?</span><div class="grow"><b>Plusieurs outils correspondent à « ' + esc(candidates.code) + ' »</b>. Choisissez :</div></div>';
-      h += '<div class="box cands">' + candidates.list.map(function (t) { return '<button type="button" data-pick="' + esc(t.ref) + '"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></button>'; }).join("") + '</div>';
-    }
-    var out = S.sens === 1;
-    h += '<form class="zone ' + (out ? "out" : "in") + '" id="scanform" autocomplete="off">' +
-      '<div class="row sens" role="group" aria-label="Sens du mouvement">' +
-        '<button type="button" class="o' + (out ? " on" : "") + '" data-sens="1" aria-pressed="' + out + '">⬆ Sortie</button>' +
-        '<button type="button" class="i' + (!out ? " on" : "") + '" data-sens="0" aria-pressed="' + !out + '">⬇ Entrée</button>' +
-      '</div>' +
-      '<div class="row"><label for="machine" class="muted">Machine :</label><select id="machine"><option value="">Aucune</option>' +
-        MACHINES.map(function (m) { return '<option' + (S.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></div>' +
-      '<div class="row"><label for="qty" class="muted">Quantité :</label><input type="number" id="qty" class="qty" min="1" max="999" step="1" value="1"></div>' +
-      '<div class="state"><span class="dot"></span><span id="statetxt">Prêt : chaque scan = ' + (out ? "SORTIE" : "ENTRÉE") + ' de 1</span></div>' +
-      '<input type="text" class="code" id="code" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
-      '<input type="submit" value="OK" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
-      '<p class="help"><b>Chaque scan enregistre aussitôt la quantité indiquée</b> (1 par défaut, remise à 1 après chaque scan) dans le sens choisi. Avec la douchette, viser l\'étiquette suffit. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
-      '<p class="help">Plusieurs outils pour un même OF ? <a href="#of"><b>Scan par OF (liste)</b></a> : on scanne tout, on ajuste les quantités, on valide une fois.</p>' +
-      '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' +
-        S.tools.map(function (t) { return '<button type="button" data-scan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") +
-      '</div></div>' +
-    '</form>';
-
-    var last = S.moves.slice(0, 5);
-    h += '<div class="box"><div class="hd">Derniers scans</div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
-      last.map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
-      '</tbody></table></div></div></div>';
-    return h;
   }
 
   function donut(counts, total) {
@@ -468,17 +390,16 @@ svg text { font-family: var(--font-body); }
     ofRead(); ofFlash = null; ofCands = null;
     var o = S.of, problems = [];
     if (!o.lines.length) { problems.push("La liste est vide : scannez au moins un outil."); }
-    if (!o.no) { problems.push("Indiquez le numéro d'OF (pour retrouver ces mouvements dans l'historique)."); }
     if (o.sens === 1) { o.lines.forEach(function (l) { var t = tool(l.ref); if (l.qty > t.stock) { problems.push(l.ref + " : il ne reste que " + t.stock + " en stock (demandé : " + l.qty + ")."); } }); }
     if (problems.length) { ofResult = { ok: false, msg: "Rien n'a été enregistré.", list: problems }; beep(false); render(); return; }
-    var total = 0, warn = [], prefix = (o.sens === 1 ? "Sortie" : "Entrée") + " OF " + o.no;
+    var total = 0, warn = [], prefix = (o.sens === 1 ? "Sortie" : "Entrée") + (o.no ? " OF " + o.no : " scan");
     o.lines.forEach(function (l) {
       total += l.qty;
       var t = tool(l.ref); move(t, l.qty, o.sens, o.machine, prefix);
       if (o.sens === 1 && t.seuil > 0 && t.stock < t.seuil) { warn.push(t.ref + " est sous son seuil (" + t.stock + " / mini " + t.seuil + ")."); }
     });
     ofUndoInfo = { no: o.no, sens: o.sens, machine: o.machine, lines: o.lines.map(function (l) { return { ref: l.ref, qty: l.qty }; }) };
-    ofResult = { ok: true, msg: (o.sens === 1 ? "Sortie" : "Entrée") + " enregistrée pour l'OF " + o.no + " : " + o.lines.length + " outil(s), " + total + " pièce(s).", warn: warn, undo: true };
+    ofResult = { ok: true, msg: (o.sens === 1 ? "Sortie" : "Entrée") + " enregistrée" + (o.no ? " pour l'OF " + o.no : "") + " : " + o.lines.length + " outil(s), " + total + " pièce(s).", warn: warn, undo: true };
     o.lines = []; o.no = ""; save(); beep(true); render();
   }
   function ofUndo() {
@@ -487,26 +408,26 @@ svg text { font-family: var(--font-body); }
     var rev = u.sens === 1 ? 0 : 1, problems = [];
     if (rev === 1) { u.lines.forEach(function (l) { var t = tool(l.ref); if (l.qty > t.stock) { problems.push(l.ref + " : il ne reste que " + t.stock + " en stock (à retirer : " + l.qty + ")."); } }); }
     if (problems.length) { ofResult = { ok: false, msg: "Annulation impossible, rien n'a été modifié.", list: problems }; beep(false); render(); return; }
-    u.lines.forEach(function (l) { move(tool(l.ref), l.qty, rev, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + " OF " + u.no); });
-    ofResult = { ok: true, msg: "OF " + u.no + " annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de " + u.lines.length + " outil(s) corrigée." };
+    u.lines.forEach(function (l) { move(tool(l.ref), l.qty, rev, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + (u.no ? " OF " + u.no : " scan")); });
+    ofResult = { ok: true, msg: (u.no ? "OF " + u.no : "Mouvement") + " annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de " + u.lines.length + " outil(s) corrigée." };
     beep(true); render();
   }
 
   function vOf() {
-    var o = S.of, out = o.sens === 1, pieces = 0, h = '<h1>Scan par OF (liste d\'outils)</h1><div class="scanwrap" style="max-width:900px">';
+    var o = S.of, out = o.sens === 1, pieces = 0, h = '<h1>Scan entrée / sortie</h1><div class="scanwrap" style="max-width:900px">';
     o.lines.forEach(function (l) { pieces += l.qty; });
     function ul(a) { return a && a.length ? '<ul style="margin:6px 0 0 18px;padding:0">' + a.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join("") + '</ul>' : ""; }
     if (ofResult) {
       h += '<div class="banner ' + (ofResult.ok ? "ok" : "ko") + '" role="status"><span class="ic">' + (ofResult.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(ofResult.msg) + '</b>' + ul(ofResult.list) + '</div>' +
-        (ofResult.undo && ofUndoInfo ? '<button type="button" class="btn-undo" id="ofundo">↶ Annuler cet OF</button>' : '') + '</div>';
+        (ofResult.undo && ofUndoInfo ? '<button type="button" class="btn-undo" id="ofundo">↶ Annuler ce mouvement</button>' : '') + '</div>';
       if (ofResult.warn && ofResult.warn.length) { h += '<div class="banner warn"><span class="ic">▲</span><div class="grow"><b>Réapprovisionnement à prévoir :</b>' + ul(ofResult.warn) + '</div></div>'; }
     }
     if (ofFlash) { h += '<div class="banner ' + (ofFlash.ok ? "ok" : "ko") + '" role="status"><span class="ic">' + (ofFlash.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(ofFlash.msg) + '</b></div></div>'; }
     h += '<form id="ofform" autocomplete="off">' +
       '<input type="submit" value="OK" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
       '<div class="row" style="justify-content:flex-start;margin-bottom:14px;gap:16px">' +
-        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">N° d\'OF<input type="text" id="ofno" maxlength="40" placeholder="ex. 12345" value="' + esc(o.no) + '" style="font:inherit;font-size:16px;height:42px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
-        '<span class="row sens"><button type="button" class="o' + (out ? " on" : "") + '" data-ofsens="1">⬆ Sortie</button><button type="button" class="i' + (!out ? " on" : "") + '" data-ofsens="0">⬇ Entrée (retour)</button></span>' +
+        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">N° d\'OF (facultatif)<input type="text" id="ofno" maxlength="40" placeholder="ex. 12345" value="' + esc(o.no) + '" style="font:inherit;font-size:16px;height:42px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
+        '<span class="row sens"><button type="button" class="o' + (out ? " on" : "") + '" data-ofsens="1">⬆ Sortie</button><button type="button" class="i' + (!out ? " on" : "") + '" data-ofsens="0">⬇ Entrée (retour, réception)</button></span>' +
         '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Machine<select id="ofmachine"><option value="">Aucune</option>' + MACHINES.map(function (m) { return '<option' + (o.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></label>' +
       '</div>';
     if (ofCands) {
@@ -514,12 +435,12 @@ svg text { font-family: var(--font-body); }
         ofCands.list.map(function (t) { return '<button type="button" data-ofpick="' + esc(t.ref) + '"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></button>'; }).join("") + '</div>';
     }
     h += '<div class="zone ' + (out ? "out" : "in") + '" style="margin-bottom:16px">' +
-      '<div class="state"><span class="dot"></span><span>' + (out ? "Scannez les outils à SORTIR pour cet OF" : "Scannez les outils RETOURNÉS pour cet OF") + '</span></div>' +
+      '<div class="state"><span class="dot"></span><span>' + (out ? "Scannez les outils à SORTIR" : "Scannez les outils ENTRÉS (retour ou réception)") + '</span></div>' +
       '<input type="text" class="code" id="ofcode" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
-      '<p class="help"><b>Chaque scan ajoute l\'outil à la liste</b> (rien n\'est enregistré tout de suite). Scanner le même outil deux fois ajoute 1 à sa quantité. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
+      '<p class="help"><b>Chaque scan ajoute l\'outil à la liste</b> (rien n\'est enregistré tout de suite). Scanner le même outil deux fois ajoute 1 à sa quantité. Un seul outil ? Scannez-le puis validez. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
       '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' + S.tools.map(function (t) { return '<button type="button" data-ofscan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") + '</div></div>' +
     '</div>';
-    h += '<h2 style="margin-bottom:8px">Outils de l\'OF ' + (o.no ? '<span class="muted">' + esc(o.no) + '</span> ' : '') + '<span class="muted" style="font-weight:400">(' + o.lines.length + ' outil(s), ' + pieces + ' pièce(s))</span></h2>';
+    h += '<h2 style="margin-bottom:8px">Outils à enregistrer ' + (o.no ? '<span class="muted">OF ' + esc(o.no) + '</span> ' : '') + '<span class="muted" style="font-weight:400">(' + o.lines.length + ' outil(s), ' + pieces + ' pièce(s))</span></h2>';
     if (!o.lines.length) { h += '<p class="muted">La liste est vide. Le dernier outil scanné apparaît en haut.</p>'; }
     else {
       h += '<div class="box"><div class="tablewrap"><table><thead><tr><th>Référence</th><th>Désignation</th><th class="num">En stock</th><th style="text-align:center">Quantité</th><th></th></tr></thead><tbody>' +
@@ -530,9 +451,12 @@ svg text { font-family: var(--font-body); }
             '<td style="text-align:center"><button type="button" data-ofrm="' + esc(l.ref) + '" title="Retirer de la liste" aria-label="Retirer ' + esc(l.ref) + '" style="background:none;border:0;cursor:pointer;font-size:18px;opacity:.6">✕</button></td></tr>';
         }).join("") + '</tbody></table></div></div>' +
         '<div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="btn-undo" id="ofclear">Vider la liste</button>' +
-        '<button type="button" class="btn-save" id="ofvalidate" style="background:' + (out ? "var(--red-btn)" : "var(--green-btn)") + '">✔ Valider l\'OF : ' + (out ? "sortie" : "entrée") + ' de ' + pieces + ' pièce(s)</button></div>';
+        '<button type="button" class="btn-save" id="ofvalidate" style="background:' + (out ? "var(--red-btn)" : "var(--green-btn)") + '">✔ Valider : ' + (out ? "sortie" : "entrée") + ' de ' + pieces + ' pièce(s)</button></div>';
     }
-    h += '</form><p class="help">Un seul outil à sortir ? Utilisez plutôt <a href="#scan">Scan entrée / sortie</a>.</p></div>';
+    h += '</form>';
+    h += '<div class="box"><div class="hd">Derniers mouvements</div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
+      S.moves.slice(0, 6).map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div></div>';
     return h;
   }
 
@@ -547,7 +471,7 @@ svg text { font-family: var(--font-body); }
     var c = document.getElementById("ofclear"); if (c) { c.addEventListener("click", function () { if (confirm("Vider toute la liste ?")) { S.of.lines = []; S.of.no = ""; ofFlash = { ok: true, msg: "Liste vidée." }; ofResult = null; save(); render(); } }); }
     var v = document.getElementById("ofvalidate");
     if (v) { v.addEventListener("click", function () { ofRead(); var n = 0; S.of.lines.forEach(function (l) { n += l.qty; }); if (confirm((S.of.sens === 1 ? "Enregistrer la SORTIE" : "Enregistrer l'ENTRÉE") + " de " + n + " pièce(s) (" + S.of.lines.length + " outil(s)) ?")) { ofValidate(); } }); }
-    var u = document.getElementById("ofundo"); if (u) { u.addEventListener("click", function () { if (confirm("Annuler tout cet OF ?")) { ofUndo(); } }); }
+    var u = document.getElementById("ofundo"); if (u) { u.addEventListener("click", function () { if (confirm("Annuler ce mouvement ?")) { ofUndo(); } }); }
     document.querySelectorAll("#ofno, [data-ofqty]").forEach(function (i) { i.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); code.focus(); } }); i.addEventListener("change", function () { ofRead(); save(); }); });
     document.getElementById("ofmachine").addEventListener("change", function () { ofRead(); save(); code.focus(); });
     if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
@@ -633,38 +557,23 @@ svg text { font-family: var(--font-body); }
     });
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vScan, of: vOf, seuils: vSeuils, saisie: vSaisie, historique: vHisto };
+  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, saisie: vSaisie, historique: vHisto };
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
     var v = current(), el = document.getElementById("view");
     cleanStatus();
     el.innerHTML = VIEWS[v]();
-    document.querySelectorAll("nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-v") === v); });
-    if (v === "scan") { wireScan(); }
-    if (v === "of") { wireOf(); }
+    document.querySelectorAll("nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-v") === (v === "of" ? "scan" : v)); });
+    if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
     if (v === "saisie") { wireSaisie(); }
   }
 
-  function wireScan() {
-    var code = document.getElementById("code");
-    document.getElementById("scanform").addEventListener("submit", function (e) { e.preventDefault(); scan(code.value); });
-    document.querySelectorAll("[data-sens]").forEach(function (b) { b.addEventListener("click", function () { S.sens = +b.getAttribute("data-sens"); save(); render(); }); });
-    document.getElementById("machine").addEventListener("change", function (e) { S.machine = e.target.value; save(); document.getElementById("code").focus(); });
-    document.querySelectorAll("[data-scan]").forEach(function (b) { b.addEventListener("click", function () { scan(b.getAttribute("data-scan")); }); });
-    document.querySelectorAll("[data-pick]").forEach(function (b) { b.addEventListener("click", function () { scan(b.getAttribute("data-pick"), candidates && candidates.qty); }); });
-    var qe = document.getElementById("qty");
-    qe.addEventListener("input", function () { document.getElementById("statetxt").textContent = "Prêt : chaque scan = " + (S.sens === 1 ? "SORTIE" : "ENTRÉE") + " de " + readQty(); });
-    qe.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); code.focus(); } });
-    var u = document.getElementById("undo"); if (u) { u.addEventListener("click", undo); }
-    if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
-  }
-
   document.getElementById("reset").addEventListener("click", function () {
-    S = fresh(); flash = null; undoInfo = null; candidates = null; ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
+    S = fresh(); ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
   });
-  window.addEventListener("hashchange", function () { flash = null; candidates = null; ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", function () { ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
   render();
 })();
 </script>
