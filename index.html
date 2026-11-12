@@ -164,6 +164,7 @@ svg text { font-family: var(--font-body); }
       <a href="#accueil" data-v="accueil">Accueil</a>
       <a href="#scan" data-v="scan">Scan entrée / sortie</a>
       <a href="#seuils" data-v="seuils">Tableau des seuils</a>
+      <a href="#ruptures" data-v="ruptures">Durée des ruptures</a>
       <a href="#utilisation" data-v="utilisation">Utilisation des outils</a>
       <a href="#saisie" data-v="saisie">Saisie rapide</a>
       <a href="#historique" data-v="historique">Historique</a>
@@ -203,6 +204,19 @@ svg text { font-family: var(--font-body); }
     [58, 14, "0107", -2, "Sortie OF 4710 - Machine : Tour 1"], [66, 11, "0114", -1, "Sortie scan - Machine : Tour 2"], [74, 15, "0105", -2, "Sortie OF 4685 - Machine : Tour 2"],
     [81, 10, "0103", -3, "Sortie OF 4660 - Machine : Fraiseuse 2"], [88, 9, "0116", -1, "Sortie scan - Machine : Fraiseuse 1"]
   ];
+  // Ruptures fictives : [outil, début (jours en arrière), durée (heures) ou 0 si encore en cours, stock le plus bas]
+  var RUPT_SEED = [
+    ["0103", 42, 120, 1], ["0105", 35, 72, 0], ["0107", 27, 216, 1], ["0102", 21, 54, 2], ["0103", 13, 96, 0],
+    ["0109", 9, 36, 3], ["0111", 19, 144, 0], ["0102", 3, 0, 3], ["0106", 4, 0, 2], ["0111", 1.3, 0, 1], ["0114", 0.35, 0, 3]
+  ];
+  function isoFromMs(ms) { var d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 19); }
+  function seedRuptures() {
+    var now = Date.now();
+    return RUPT_SEED.map(function (r) {
+      var st = now - r[1] * 86400000;
+      return { ref: "OUT-" + r[0], start: isoFromMs(st), end: r[2] ? isoFromMs(st + r[2] * 3600000) : null, min: r[3], seuil: 4 };
+    });
+  }
   function extraMoves() {
     return EXTRA_MOVES.map(function (m) {
       var d = new Date(); d.setDate(d.getDate() - m[0]); d.setHours(m[1], 0, 0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -214,6 +228,7 @@ svg text { font-family: var(--font-body); }
     return {
       tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10 }; }),
       moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }).concat(extraMoves()).sort(function (a, b) { return a.t < b.t ? 1 : -1; }),
+      rup: seedRuptures(),                                 // périodes « sous le seuil » (end vide = en cours)
       status: {},                                          // suivi de réapprovisionnement : ref → { statut, note, t }
       of: { no: "", sens: 1, machine: "", lines: [] }      // liste en cours du « Scan par OF »
     };
@@ -223,6 +238,7 @@ svg text { font-family: var(--font-body); }
   try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
   if (!S || !S.tools) { S = fresh(); }
   if (!S.status) { S.status = {}; }
+  if (!S.rup) { S.rup = []; }
   if (!S.of) { S.of = { no: "", sens: 1, machine: "", lines: [] }; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -239,7 +255,28 @@ svg text { font-family: var(--font-body); }
   // Un outil revenu au-dessus de son seuil n'a plus de suivi de commande (comme rmeca_clean_statuts du module)
   function cleanStatus() {
     Object.keys(S.status).forEach(function (ref) { var t = tool(ref); if (!t || t.seuil <= 0 || t.stock >= t.seuil) { delete S.status[ref]; } });
+    syncRup();
   }
+  // Ouvre une période quand un outil passe sous son seuil, la ferme quand il remonte ; moins de 10 min = correction, supprimée
+  function syncRup() {
+    var now = Date.now();
+    S.tools.forEach(function (t) {
+      var under = t.seuil > 0 && t.stock < t.seuil, open = null;
+      S.rup.forEach(function (r) { if (r.ref === t.ref && !r.end) { open = r; } });
+      if (under && !open) { S.rup.push({ ref: t.ref, start: isoFromMs(now), end: null, min: t.stock, seuil: t.seuil }); }
+      else if (under && open) { open.min = Math.min(open.min, t.stock); }
+      else if (!under && open) {
+        if (now - new Date(open.start).getTime() < 600000) { S.rup.splice(S.rup.indexOf(open), 1); } else { open.end = isoFromMs(now); }
+      }
+    });
+  }
+  function fmtDur(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    if (s < 3600) { return Math.max(1, Math.round(s / 60)) + " min"; }
+    if (s < 86400) { var m = Math.floor((s % 3600) / 60); return Math.floor(s / 3600) + " h " + (m < 10 ? "0" : "") + m; }
+    return Math.floor(s / 86400) + " j " + Math.floor((s % 86400) / 3600) + " h";
+  }
+  function openSince(ref) { var o = null; S.rup.forEach(function (r) { if (r.ref === ref && !r.end) { o = r; } }); return o; }
   var ORDER = { r: 0, y: 1, g: 2, n: 3 };
   function sorted() { return S.tools.slice().sort(function (a, b) { return ORDER[status(a).k] - ORDER[status(b).k] || a.ref.localeCompare(b.ref); }); }
   function fmtDate(iso) { var d = new Date(iso); function p(n) { return (n < 10 ? "0" : "") + n; } return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes()); }
@@ -289,6 +326,7 @@ svg text { font-family: var(--font-body); }
         '<div class="box"><div class="hd">Stock outils</div><div class="bd"><div class="shortcuts">' +
           '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outils</span></a>' +
           '<a href="#seuils"><b>Tableau des seuils</b><span>Graphiques et détail</span></a>' +
+          '<a href="#ruptures"><b>Ruptures</b><span>Durée sous le seuil</span></a>' +
           '<a href="#utilisation"><b>Utilisation</b><span>Plus et moins utilisés</span></a>' +
           '<a href="#saisie"><b>Saisie rapide</b><span>Stock et seuils en masse</span></a>' +
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
@@ -374,8 +412,8 @@ svg text { font-family: var(--font-body); }
         '<input type="text" data-note="' + esc(t.ref) + '" maxlength="255" placeholder="Note (fournisseur, date…)" value="' + esc(st ? st.note : "") + '" style="width:130px;height:34px;font:inherit;font-size:14px;padding:0 8px;border:1px solid #c9cfd8;border-radius:8px">' +
         (st ? '<div class="muted" style="font-size:12.5px">mis à jour le ' + fmtDate(st.t) + '</div>' : "");
     }
-    h += '<div class="box"><div class="hd">Détail</div><div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
-      list.map(function (t) { var s = status(t), cmd = (s.k === "r" || s.k === "y") ? Math.max(t.desired - t.stock, 0) : ""; return '<tr class="' + s.k + '"><td><span class="pill ' + s.k + '">' + s.ic + ' ' + s.txt + '</span></td><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td class="num"><b>' + t.stock + '</b></td><td class="num">' + t.seuil + '</td><td class="num">' + t.desired + '</td><td class="num"><b>' + cmd + '</b></td><td>' + suiviCell(t, s.k) + '</td></tr>'; }).join("") +
+    h += '<div class="box"><div class="hd">Détail</div><div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th>Sous le seuil depuis</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
+      list.map(function (t) { var s = status(t), cmd = (s.k === "r" || s.k === "y") ? Math.max(t.desired - t.stock, 0) : ""; return '<tr class="' + s.k + '"><td><span class="pill ' + s.k + '">' + s.ic + ' ' + s.txt + '</span></td><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td class="num"><b>' + t.stock + '</b></td><td class="num">' + t.seuil + '</td><td class="num">' + t.desired + '</td><td class="num"><b>' + cmd + '</b></td><td>' + (function () { var o = s.k === "r" ? openSince(t.ref) : null; return o ? '<b>' + fmtDur(Date.now() - new Date(o.start).getTime()) + '</b><div class="muted" style="font-size:12.5px">depuis le ' + fmtDate(o.start).slice(0, 10) + '</div>' : ""; })() + '</td><td>' + suiviCell(t, s.k) + '</td></tr>'; }).join("") +
       '</tbody></table></div></div><p class="muted" style="font-size:13.5px">Rouge : stock sous le seuil mini. Jaune : jusqu\'à 50 % au-dessus du seuil. « À commander » = stock désiré − stock.</p>';
     return h;
   }
@@ -550,6 +588,45 @@ svg text { font-family: var(--font-body); }
     document.querySelectorAll("[data-per]").forEach(function (b) { b.addEventListener("click", function () { usePer = +b.getAttribute("data-per"); render(); }); });
   }
 
+  /* ---------- Durée des ruptures (comme ruptures.php) ---------- */
+  var rupPer = 90;
+  function vRupt() {
+    var now = Date.now(), sinceMs = rupPer > 0 ? now - rupPer * 86400000 : 0;
+    var rows = S.rup.map(function (r) {
+      var a = new Date(r.start).getTime(), b = r.end ? new Date(r.end).getTime() : null, t = tool(r.ref);
+      return { r: r, a: a, b: b, dur: (b || now) - a, t: t };
+    }).filter(function (x) { return x.t; });
+    var ongoing = rows.filter(function (x) { return x.b === null; }).sort(function (x, y) { return y.dur - x.dur; });
+    var done = rows.filter(function (x) { return x.b !== null && x.b >= sinceMs; }).sort(function (x, y) { return y.b - x.b; });
+    var avg = 0, longest = 0; done.forEach(function (x) { avg += x.dur; longest = Math.max(longest, x.dur); }); avg = done.length ? avg / done.length : 0;
+    var bytool = {};
+    rows.forEach(function (x) { if (x.b === null || x.b >= sinceMs) { var o = bytool[x.r.ref] || (bytool[x.r.ref] = { ref: x.r.ref, label: x.t.label, n: 0, total: 0, max: 0 }); o.n++; o.total += x.dur; o.max = Math.max(o.max, x.dur); } });
+    var tl = Object.keys(bytool).map(function (k) { return bytool[k]; }).sort(function (x, y) { return y.total - x.total; }).slice(0, 10);
+    var maxOn = ongoing.length ? ongoing[0].dur : 0;
+    var h = '<h1>Durée des ruptures</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px"><span class="muted">Ruptures terminées sur :</span>' +
+      [[30, "30 jours"], [90, "90 jours"], [365, "1 an"], [0, "Tout"]].map(function (p) { return '<button type="button" class="btn-undo" data-rper="' + p[0] + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (p[0] === rupPer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + p[1] + '</button>'; }).join("") + '</div>';
+    h += '<div class="tiles" style="margin-bottom:18px">' +
+      '<div class="tile"><b style="color:' + (ongoing.length ? "var(--red)" : "var(--green)") + '">' + ongoing.length + '</b><span>outil(s) sous le seuil maintenant</span></div>' +
+      '<div class="tile"><b>' + (maxOn ? fmtDur(maxOn) : "—") + '</b><span>rupture en cours la plus longue</span></div>' +
+      '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (' + done.length + ')</span></div>' +
+      '<div class="tile"><b>' + (longest ? fmtDur(longest) : "—") + '</b><span>rupture terminée la plus longue</span></div></div>';
+    h += '<h2>Ruptures en cours</h2>' + (ongoing.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Sous le seuil depuis</th><th>Durée</th><th></th><th class="num">Stock / mini</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
+      ongoing.map(function (x) { var st = S.status[x.r.ref]; return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td><b>' + fmtDur(x.dur) + '</b></td><td><span style="display:block;height:8px;width:110px;border-radius:4px;background:#e6e9ee"><span style="display:block;height:8px;border-radius:4px;background:var(--red);width:' + Math.round(x.dur / maxOn * 100) + '%"></span></span></td><td class="num">' + x.t.stock + ' / ' + x.t.seuil + '</td><td>' + (st ? '<b>' + esc(st.statut) + '</b>' + (st.note ? ' <span class="muted">' + esc(st.note) + '</span>' : '') : '<span class="muted">— sans suivi —</span>') + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div>' : '<p class="muted">Aucun outil sous son seuil.</p>');
+    h += '<h2>Ruptures terminées (outil réapprovisionné)</h2>' + (done.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Passé sous le seuil le</th><th>Réapprovisionné le</th><th class="num">Durée</th><th class="num">Stock le plus bas</th></tr></thead><tbody>' +
+      done.slice(0, 50).map(function (x) { return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td>' + fmtDate(x.r.end) + '</td><td class="num"><b>' + fmtDur(x.dur) + '</b></td><td class="num">' + (x.r.min <= 0 ? '<span style="color:var(--red);font-weight:600">0 (rupture totale)</span>' : x.r.min + ' / mini ' + x.r.seuil) + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div>' : '<p class="muted">Aucune rupture terminée sur cette période.</p>');
+    if (tl.length) {
+      h += '<h2>Par outil (temps total sous le seuil)</h2><div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Nombre de ruptures</th><th class="num">Temps total</th><th class="num">Durée moyenne</th><th class="num">Plus longue</th></tr></thead><tbody>' +
+        tl.map(function (o) { return '<tr><td>' + esc(o.ref) + ' <span class="muted">' + esc(o.label) + '</span></td><td class="num">' + o.n + '</td><td class="num"><b>' + fmtDur(o.total) + '</b></td><td class="num">' + fmtDur(o.total / o.n) + '</td><td class="num">' + fmtDur(o.max) + '</td></tr>'; }).join("") + '</tbody></table></div></div>';
+    }
+    h += '<p class="muted" style="font-size:13.5px">Une rupture commence quand le stock d\'un outil passe <b>sous son seuil mini</b> et se termine quand il remonte au niveau du seuil ou au-dessus (réapprovisionnement). Une sortie annulée tout de suite (moins de 10 minutes) n\'est pas comptée comme une rupture.</p>';
+    return h;
+  }
+  function wireRupt() {
+    document.querySelectorAll("[data-rper]").forEach(function (b) { b.addEventListener("click", function () { rupPer = +b.getAttribute("data-rper"); render(); }); });
+  }
+
   function vHisto() {
     return '<h1>Historique des mouvements</h1><p class="intro">Qui, quand, quel outil, combien et pour quelle machine. Les annulations restent visibles.</p>' +
       '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
@@ -614,7 +691,7 @@ svg text { font-family: var(--font-body); }
     });
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, saisie: vSaisie, historique: vHisto };
+  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, saisie: vSaisie, historique: vHisto };
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
@@ -625,6 +702,7 @@ svg text { font-family: var(--font-body); }
     if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
     if (v === "utilisation") { wireUtil(); }
+    if (v === "ruptures") { wireRupt(); }
     if (v === "saisie") { wireSaisie(); }
   }
 
