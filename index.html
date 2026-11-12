@@ -30,66 +30,70 @@
 }
 * { box-sizing: border-box; }
 html, body { background: var(--bg); color: var(--ink); }
-body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; background: linear-gradient(180deg, #eef2f7 0, var(--bg) 320px) no-repeat, var(--bg); -webkit-font-smoothing: antialiased; }
+:root { --shadow: 0 1px 2px rgba(23,32,44,.06), 0 6px 18px rgba(23,32,44,.07); --shadow-hover: 0 2px 4px rgba(23,32,44,.08), 0 10px 26px rgba(23,32,44,.12); --radius: 14px; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--navy); }
 .gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
 .demo-note { background: #fff4d6; color: #5a4300; font-size: 13.5px; padding-block: 8px; text-align: center; }
 .demo-note button { font: inherit; background: none; border: 0; color: #5a4300; text-decoration: underline; cursor: pointer; padding: 0 4px; }
 
-.topbar { background: var(--navy); color: #fff; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.topbar { background: linear-gradient(180deg, #2c4568, var(--navy)); box-shadow: 0 2px 10px rgba(23,32,44,.25); color: #fff; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
 .topbar .in { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding-block: 8px; }
 .brand { font-weight: 700; letter-spacing: .01em; margin-right: 10px; white-space: nowrap; }
 .brand small { font-weight: 400; opacity: .7; margin-left: 6px; }
 nav { display: flex; flex-wrap: wrap; gap: 4px; }
-nav a { color: #dfe7f2; text-decoration: none; padding: 7px 12px; border-radius: 6px; font-weight: 500; font-size: 14.5px; }
+nav a { color: #dfe7f2; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 14.5px; transition: background .15s, color .15s; }
 nav a:hover { background: rgba(255,255,255,.1); }
-nav a.on { background: #fff; color: var(--navy); }
+nav a.on { background: #fff; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
 nav a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
 main { max-width: 1120px; margin: 0 auto; padding-block: 26px 60px; display: flex; flex-direction: column; gap: 22px; }
-h1 { font-size: 22px; margin: 0; color: var(--navy); font-weight: 600; }
-h2 { font-size: 17px; margin: 0; }
+h1 { font-size: 24px; margin: 0; color: var(--navy); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 17px; margin: 0; color: var(--navy); font-weight: 600; }
 p { margin: 0; }
+a { color: #1f5fb4; }
+a:hover { color: #174a8c; }
 .muted { color: var(--muted); }
 .intro { max-width: 70ch; color: var(--muted); }
 
-.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
-.box > .hd { background: #f0f2f5; padding: 10px 16px; font-weight: 500; border-bottom: 1px solid var(--line); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.box > .hd { background: #f3f5f8; padding: 12px 18px; font-weight: 600; color: var(--navy); border-bottom: 1px solid var(--line); }
 .box > .bd { padding: 14px 16px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
 
 .shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.shortcuts a { display: flex; flex-direction: column; gap: 4px; padding: 16px 14px; border-radius: 8px; text-decoration: none; background: #eef0f3; color: var(--ink); }
+.shortcuts a { display: flex; flex-direction: column; gap: 4px; padding: 16px 14px; border-radius: 12px; text-decoration: none; background: #eef1f5; color: var(--ink); transition: transform .12s, box-shadow .12s; }
+.shortcuts a:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
 .shortcuts a.main { background: var(--navy); color: #fff; }
 .shortcuts b { font-size: 16px; }
 .shortcuts span { font-size: 13px; opacity: .8; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
-.tile { background: #eef0f3; border-radius: 8px; padding: 10px 12px; }
+.tile { background: #eef1f5; border-radius: 12px; padding: 12px 14px; }
 .tile b { display: block; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .tile span { font-size: 13px; color: var(--muted); }
 
 /* Scan */
 .scanwrap { max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
-.banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; font-size: 15.5px; }
+.banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; border-radius: 12px; font-size: 15.5px; box-shadow: var(--shadow); }
 .banner .ic { font-size: 24px; line-height: 1; }
 .banner .grow { flex: 1; min-width: 0; }
 .banner.ok { background: #e9f7e9; border-left: 8px solid var(--green); }
 .banner.ko { background: #fbeaea; border-left: 8px solid var(--red); }
 .banner.warn { background: #fff6e0; border-left: 8px solid var(--yellow); }
 .btn-undo { background: #fff; border: 1px solid #999; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
-.zone { border: 3px dashed #b9b9b4; border-radius: 14px; padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; background: var(--surface); }
+.zone { border: 3px dashed #b9b9b4; border-radius: 18px; box-shadow: var(--shadow); padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; background: var(--surface); }
 .zone.out { border-color: var(--red-btn); background: #fdf4f4; }
 .zone.in { border-color: var(--green-btn); background: #f2faf2; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .sens button { font: inherit; font-weight: 600; padding: 9px 18px; border: 2px solid #bbb; border-radius: 10px; background: #fff; cursor: pointer; color: var(--ink); }
 .sens button.on.o { background: var(--red-btn); border-color: var(--red-btn); color: #fff; }
 .sens button.on.i { background: var(--green-btn); border-color: var(--green-btn); color: #fff; }
-select { font: inherit; font-size: 16px; height: 42px; min-width: 190px; padding: 0 10px; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: var(--ink); }
+select { font: inherit; font-size: 16px; height: 42px; min-width: 190px; padding: 0 10px; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); }
 .state { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); }
 .zone.in .dot { background: var(--green); }
-.code { font: inherit; font-size: 22px; padding: 9px 12px; width: 100%; max-width: 420px; text-align: center; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: var(--ink); }
+.code { font: inherit; font-size: 22px; padding: 10px 14px; width: 100%; max-width: 420px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(23,32,44,.05); background: #fff; color: var(--ink); }
 .try { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .try .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .try button { font-family: var(--font-mono); font-size: 13px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink); }
@@ -101,15 +105,15 @@ select { font: inherit; font-size: 16px; height: 42px; min-width: 190px; padding
 /* Tables */
 .tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
-th { text-align: left; font-weight: 500; color: var(--muted); background: #f0f2f5; padding: 9px 12px; white-space: nowrap; }
-td { padding: 9px 12px; border-top: 1px solid var(--line); white-space: nowrap; }
+th { text-align: left; font-weight: 600; color: var(--muted); background: #f3f5f8; padding: 11px 14px; white-space: nowrap; }
+td { padding: 10px 14px; border-top: 1px solid #e8ebef; white-space: nowrap; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 500; color: #fff; }
+.pill { display: inline-block; padding: 3px 11px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; }
 .pill.r { background: var(--red); } .pill.y { background: var(--yellow); color: #17202c; } .pill.g { background: var(--green); } .pill.n { background: var(--grey); }
 .qplus { color: var(--green-btn); font-weight: 600; } .qmin { color: var(--red-btn); font-weight: 600; }
 
-.qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #bbb; border-radius: 8px; background: #fff; color: var(--ink); }
+.qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 1px 2px rgba(23,32,44,.05); }
 
 /* Filigrane « Version test » (comme lib/rmecastock.lib.php dans le module) */
 .rm-test-wm { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: min(13vw, 150px); font-weight: 700; letter-spacing: .08em; white-space: nowrap; color: rgba(208,59,59,.11); pointer-events: none; user-select: none; z-index: 9999; }
@@ -118,7 +122,12 @@ tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
 /* Saisie rapide */
 .inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
 .inv input.changed { background: #fff7d6; border-color: #fab219; }
-.btn-save { font: inherit; font-weight: 600; padding: 10px 26px; border: 0; border-radius: 8px; background: var(--navy); color: #fff; cursor: pointer; }
+.btn-save { font: inherit; font-weight: 600; padding: 11px 26px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(23,32,44,.22); transition: filter .15s, transform .05s; }
+.btn-save:hover { filter: brightness(1.12); } .btn-save:active { transform: translateY(1px); }
+.btn-undo { transition: box-shadow .15s, background .15s; } .btn-undo:hover { box-shadow: 0 2px 8px rgba(23,32,44,.18); }
+.sens button { transition: filter .15s; } .sens button:hover { filter: brightness(.96); }
+tbody tr:hover td { background: #f3f7fc; }
+tr.r:hover td { background: #f9e6e6; } tr.y:hover td { background: #fff3d9; }
 
 /* Charts */
 .charts { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; }
@@ -273,10 +282,6 @@ svg text { font-family: var(--font-body); }
     });
     var under = S.tools.filter(function (t) { return status(t).k === "r"; }).length;
     var restock = sorted().filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
-    var conso = {};
-    S.moves.forEach(function (m) { if (m.qty < 0 && m.label.indexOf("Annulation") !== 0) { conso[m.ref] = (conso[m.ref] || 0) - m.qty; } });
-    var consoList = Object.keys(conso).map(function (k) { return [k, conso[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6);
-    var cmax = consoList.length ? consoList[0][1] : 1;
 
     return '<h1>Accueil</h1>' +
       '<p class="intro">Démonstration de suivi des outils coupants pour un atelier d\'usinage. Chaque sortie ou retour d\'outil est scanné ; le stock et les alertes de seuil se mettent à jour tout seuls. Essayez la page <a href="#scan">Scan</a> : le tableau des seuils change en direct.</p>' +
@@ -297,9 +302,6 @@ svg text { font-family: var(--font-body); }
         '<div class="box"><div class="hd">Outils à réapprovisionner (' + restock.length + ')</div><div class="bd"><ul class="restock">' +
           (restock.length ? restock.map(function (t) { var s = status(t), st = S.status[t.ref]; return '<li><span>' + esc(t.ref) + ' <span class="muted">' + esc(t.label) + '</span>' + (st ? '<br><b style="font-size:13px">' + esc(st.statut) + '</b>' : '') + '</span><span><span class="pill ' + s.k + '">' + s.ic + ' ' + t.stock + ' / ' + t.seuil + '</span></span></li>'; }).join("") : '<li class="muted">Aucun outil sous ou proche du seuil.</li>') +
         '</ul></div></div>' +
-        '<div class="box"><div class="hd">Consommation (outils sortis)</div><div class="bd">' +
-          (consoList.length ? consoList.map(function (c) { return '<div class="bar"><span>' + esc(c[0].slice(-4)) + '</span><span class="track"><span class="fill" style="display:block;width:' + Math.round(c[1] / cmax * 100) + '%"></span></span><b class="num">' + c[1] + '</b></div>'; }).join("") : '<p class="muted">Aucune sortie pour l\'instant.</p>') +
-        '</div></div>' +
       '</div>';
   }
 
@@ -361,15 +363,15 @@ svg text { font-family: var(--font-body); }
     });
     if (counts.r + counts.y > 0) {
       h += '<h2>Suivi du réapprovisionnement</h2><div class="tiles">' +
-        '<div class="tile"><b style="color:var(--red)">' + nostatus + '</b><span>▼ sous le seuil, <b>sans suivi</b></span></div>' +
+        '<div class="tile"><b style="color:var(--red)">' + nostatus + '</b><span>▼ sous le seuil, <strong>sans suivi</strong></span></div>' +
         STATUTS.map(function (n) { return '<div class="tile"><b>' + (tracked[n] || 0) + '</b><span>' + esc(n) + '</span></div>'; }).join("") + '</div>';
     }
     function suiviCell(t, k) {
       if (k !== "r" && k !== "y") { return ""; }
       var st = S.status[t.ref];
-      return '<select data-st="' + esc(t.ref) + '" aria-label="Suivi de ' + esc(t.ref) + '" style="min-width:0;height:34px;font-size:14px"><option value="">' + (k === "r" ? "— sans suivi —" : "— pas encore —") + '</option>' +
+      return '<select data-st="' + esc(t.ref) + '" aria-label="Suivi de ' + esc(t.ref) + '" style="min-width:0;width:178px;height:34px;font-size:14px"><option value="">' + (k === "r" ? "— sans suivi —" : "— pas encore —") + '</option>' +
         STATUTS.map(function (n) { return '<option' + (st && st.statut === n ? " selected" : "") + '>' + esc(n) + '</option>'; }).join("") + '</select> ' +
-        '<input type="text" data-note="' + esc(t.ref) + '" maxlength="255" placeholder="Note (fournisseur, date…)" value="' + esc(st ? st.note : "") + '" style="width:170px;height:34px;font:inherit;font-size:14px;padding:0 8px;border:1px solid #bbb;border-radius:6px">' +
+        '<input type="text" data-note="' + esc(t.ref) + '" maxlength="255" placeholder="Note (fournisseur, date…)" value="' + esc(st ? st.note : "") + '" style="width:130px;height:34px;font:inherit;font-size:14px;padding:0 8px;border:1px solid #c9cfd8;border-radius:8px">' +
         (st ? '<div class="muted" style="font-size:12.5px">mis à jour le ' + fmtDate(st.t) + '</div>' : "");
     }
     h += '<div class="box"><div class="hd">Détail</div><div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
