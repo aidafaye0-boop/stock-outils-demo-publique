@@ -196,6 +196,9 @@ svg text { font-family: var(--font-body); }
     ["2026-11-08T09:05:30", "0106", -1, "Sortie scan - Machine : Tour 1"]
   ];
   var PRICES = { "0101": 18.5, "0102": 42, "0103": 36, "0104": 12.8, "0105": 24.5, "0106": 7.2, "0107": 6.9, "0108": 9.4, "0109": 11.6, "0110": 58, "0111": 31, "0112": 15.3, "0113": 47.5, "0114": 89, "0115": 8.8, "0116": 14.2 };   // prix unitaires fictifs (€ HT)
+  var INFOS = { "0101": ["Fraises", "Armoire A, bac 1"], "0102": ["Fraises", "Armoire A, bac 2"], "0103": ["Fraises", "Armoire A, bac 3"], "0104": ["Forets", "Armoire B, bac 1"], "0105": ["Forets", "Armoire B, bac 2"],
+    "0106": ["Plaquettes", "Tiroir 1"], "0107": ["Plaquettes", "Tiroir 2"], "0108": ["Tarauds", "Armoire C, bac 1"], "0109": ["Tarauds", "Armoire C, bac 2"], "0110": ["Alésage", "Armoire C, bac 3"],
+    "0111": ["Fraises", "Armoire A, bac 4"], "0112": ["Fraises", "Armoire A, bac 5"], "0113": ["Filetage", "Armoire C, bac 4"], "0114": ["Alésage", "Armoire C, bac 5"], "0115": ["Forets", "Armoire B, bac 3"], "0116": ["Fraises", "Armoire A, bac 6"] };   // familles et emplacements fictifs
   var KEY = "stock-outils-demo-v1";
   // [jours en arrière, heure, outil, quantité, libellé] : sorties plus anciennes (fictives) pour le classement d'utilisation
   var EXTRA_MOVES = [
@@ -229,7 +232,7 @@ svg text { font-family: var(--font-body); }
 
   function fresh() {
     return {
-      tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10, price: PRICES[t[0]] || 0, barcode: "" }; }),
+      tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10, price: PRICES[t[0]] || 0, barcode: "", famille: (INFOS[t[0]] || ["", ""])[0], emplacement: (INFOS[t[0]] || ["", ""])[1] }; }),
       moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }).concat(extraMoves()).sort(function (a, b) { return a.t < b.t ? 1 : -1; }),
       rup: seedRuptures(),                                 // périodes « sous le seuil » (end vide = en cours)
       status: {},                                          // suivi de réapprovisionnement : ref → { statut, note, t }
@@ -242,7 +245,7 @@ svg text { font-family: var(--font-body); }
   if (!S || !S.tools) { S = fresh(); }
   if (!S.status) { S.status = {}; }
   if (!S.rup) { S.rup = []; }
-  S.tools.forEach(function (t) { if (t.price === undefined) { t.price = PRICES[t.ref.slice(-4)] || 0; } if (t.barcode === undefined) { t.barcode = ""; } });   // états enregistrés avant l'ajout des prix
+  S.tools.forEach(function (t) { if (t.price === undefined) { t.price = PRICES[t.ref.slice(-4)] || 0; } if (t.barcode === undefined) { t.barcode = ""; } if (t.famille === undefined) { t.famille = (INFOS[t.ref.slice(-4)] || ["", ""])[0]; t.emplacement = (INFOS[t.ref.slice(-4)] || ["", ""])[1]; } });   // états enregistrés avant l'ajout des prix
   if (!S.of) { S.of = { no: "", sens: 1, machine: "", lines: [] }; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -422,8 +425,8 @@ svg text { font-family: var(--font-body); }
         '<input type="text" data-note="' + esc(t.ref) + '" maxlength="255" placeholder="Note (fournisseur, date…)" value="' + esc(st ? st.note : "") + '" style="width:130px;height:34px;font:inherit;font-size:14px;padding:0 8px;border:1px solid #c9cfd8;border-radius:8px">' +
         (st ? '<div class="muted" style="font-size:12.5px">mis à jour le ' + fmtDate(st.t) + '</div>' : "");
     }
-    h += '<div class="box"><div class="hd">Détail</div><div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th class="num">Prix unit.</th><th class="num">Coût à commander</th><th>Sous le seuil depuis</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
-      list.map(function (t) { var s = status(t), cmd = (s.k === "r" || s.k === "y") ? Math.max(t.desired - t.stock, 0) : ""; return '<tr class="' + s.k + '"><td><span class="pill ' + s.k + '">' + s.ic + ' ' + s.txt + '</span></td><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td class="num"><b>' + t.stock + '</b></td><td class="num">' + t.seuil + '</td><td class="num">' + t.desired + '</td><td class="num"><b>' + cmd + '</b></td><td class="num">' + (t.price > 0 ? fmtEur(t.price) : '<span class="muted">—</span>') + '</td><td class="num"><b>' + (cmd && t.price > 0 ? fmtEur(cmd * t.price) : "") + '</b></td><td>' + (function () { var o = s.k === "r" ? openSince(t.ref) : null; return o ? '<b>' + fmtDur(Date.now() - new Date(o.start).getTime()) + '</b><div class="muted" style="font-size:12.5px">depuis le ' + fmtDate(o.start).slice(0, 10) + '</div>' : ""; })() + '</td><td>' + suiviCell(t, s.k) + '</td></tr>'; }).join("") +
+    h += '<div class="box"><div class="hd">Détail</div>' + seuilControls() + '<div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th class="num">Prix unit.</th><th class="num">Coût à commander</th><th>Sous le seuil depuis</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
+      list.map(function (t) { var s = status(t), cmd = (s.k === "r" || s.k === "y") ? Math.max(t.desired - t.stock, 0) : ""; return '<tr class="' + s.k + ' rmrow" data-state="' + s.k + '" data-fam="' + esc((t.famille || "").toLowerCase()) + '" data-txt="' + esc((t.ref + " " + t.label + " " + (t.famille || "") + " " + (t.emplacement || "")).toLowerCase()) + '"><td><span class="pill ' + s.k + '">' + s.ic + ' ' + s.txt + '</span></td><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td>' + (t.famille ? esc(t.famille) : '<span class="muted">—</span>') + '</td><td>' + (t.emplacement ? esc(t.emplacement) : '<span class="muted">—</span>') + '</td><td class="num"><b>' + t.stock + '</b></td><td class="num">' + t.seuil + '</td><td class="num">' + t.desired + '</td><td class="num"><b>' + cmd + '</b></td><td class="num">' + (t.price > 0 ? fmtEur(t.price) : '<span class="muted">—</span>') + '</td><td class="num"><b>' + (cmd && t.price > 0 ? fmtEur(cmd * t.price) : "") + '</b></td><td>' + (function () { var o = s.k === "r" ? openSince(t.ref) : null; return o ? '<b>' + fmtDur(Date.now() - new Date(o.start).getTime()) + '</b><div class="muted" style="font-size:12.5px">depuis le ' + fmtDate(o.start).slice(0, 10) + '</div>' : ""; })() + '</td><td>' + suiviCell(t, s.k) + '</td></tr>'; }).join("") +
       '</tbody></table></div></div><p class="muted" style="font-size:13.5px">Rouge : stock sous le seuil mini. Jaune : jusqu\'à 50 % au-dessus du seuil. « À commander » = stock désiré − stock.</p>';
     return h;
   }
@@ -514,7 +517,7 @@ svg text { font-family: var(--font-body); }
       h += '<div class="box"><div class="tablewrap"><table><thead><tr><th>Référence</th><th>Désignation</th><th class="num">En stock</th><th style="text-align:center">Quantité</th><th></th></tr></thead><tbody>' +
         o.lines.map(function (l) {
           var t = tool(l.ref), bad = out && l.qty > t.stock;
-          return '<tr><td><b>' + esc(l.ref) + '</b></td><td>' + esc(l.label) + '</td><td class="num">' + t.stock + (bad ? ' <span style="color:var(--red)">▼ insuffisant</span>' : '') + '</td>' +
+          return '<tr><td><b>' + esc(l.ref) + '</b></td><td>' + esc(l.label) + (t.emplacement ? '<br><span style="font-size:.9em;font-weight:600;color:var(--navy)">📍 ' + esc(t.emplacement) + '</span>' : "") + (t.famille ? ' <span class="muted" style="font-size:.85em">(' + esc(t.famille) + ')</span>' : "") + '</td><td class="num">' + t.stock + (bad ? ' <span style="color:var(--red)">▼ insuffisant</span>' : '') + '</td>' +
             '<td style="text-align:center"><input type="number" class="qty" data-ofqty="' + esc(l.ref) + '" min="1" max="999" step="1" value="' + l.qty + '" aria-label="Quantité de ' + esc(l.ref) + '" style="height:38px;font-size:18px' + (bad ? ';border-color:var(--red);background:#fbeaea' : '') + '"></td>' +
             '<td style="text-align:center"><button type="button" data-ofrm="' + esc(l.ref) + '" title="Retirer de la liste" aria-label="Retirer ' + esc(l.ref) + '" style="background:none;border:0;cursor:pointer;font-size:18px;opacity:.6">✕</button></td></tr>';
         }).join("") + '</tbody></table></div></div>' +
@@ -545,9 +548,34 @@ svg text { font-family: var(--font-body); }
     if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
   }
 
+  var sf = { q: "", fam: "", low: false };   // filtre du tableau des seuils (gardé quand l'affichage est refait)
+  function familles() { var f = {}; S.tools.forEach(function (t) { if (t.famille) { f[t.famille.toLowerCase()] = t.famille; } }); return f; }
+  function famDatalist() { var f = familles(); return '<datalist id="dl-fam">' + Object.keys(f).sort().map(function (k) { return '<option value="' + esc(f[k]) + '">'; }).join("") + '</datalist>'; }
+  function seuilControls() {
+    var f = familles(), keys = Object.keys(f).sort();
+    return '<div class="bd" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;border-bottom:1px solid var(--line)"><input type="search" id="sfq" placeholder="Rechercher (référence, désignation, famille, emplacement)…" aria-label="Rechercher" value="' + esc(sf.q) + '" style="font:inherit;height:38px;padding:0 12px;border:1px solid #c9cfd8;border-radius:8px;min-width:280px">' +
+      (keys.length ? '<select id="sffam" aria-label="Famille" style="min-width:0"><option value="">Toutes les familles</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '"' + (sf.fam === k ? " selected" : "") + '>' + esc(f[k]) + '</option>'; }).join("") + '</select>' : "") +
+      '<label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sflow"' + (sf.low ? " checked" : "") + '> Sous le seuil seulement</label><span class="muted" id="sfcount"></span></div>';
+  }
+  function applySeuilFilter() {
+    var rows = document.querySelectorAll("tr.rmrow"), n = 0, t = sf.q.trim().toLowerCase();
+    rows.forEach(function (r) {
+      var ok = (!t || r.getAttribute("data-txt").indexOf(t) >= 0) && (!sf.fam || r.getAttribute("data-fam") === sf.fam) && (!sf.low || r.getAttribute("data-state") === "r");
+      r.style.display = ok ? "" : "none"; if (ok) { n++; }
+    });
+    var c = document.getElementById("sfcount"); if (c) { c.textContent = (t || sf.fam || sf.low) ? n + " outil(s) affiché(s) sur " + rows.length : ""; }
+  }
+  function wireSeuilFilter() {
+    var q = document.getElementById("sfq"); if (!q) { return; }
+    q.addEventListener("input", function () { sf.q = q.value; applySeuilFilter(); });
+    var f = document.getElementById("sffam"); if (f) { f.addEventListener("change", function () { sf.fam = f.value; applySeuilFilter(); }); }
+    document.getElementById("sflow").addEventListener("change", function (e) { sf.low = e.target.checked; applySeuilFilter(); });
+    applySeuilFilter();
+  }
   // Met à jour l'affichage sans faire sauter la page (la position de défilement est conservée)
   function keepScroll() { var y = window.scrollY; render(); window.scrollTo(0, y); }
   function wireSeuils() {
+    wireSeuilFilter();
     document.querySelectorAll("[data-st]").forEach(function (sel) {
       sel.addEventListener("change", function () {
         var ref = sel.getAttribute("data-st"), note = document.querySelector('[data-note="' + ref + '"]').value.trim();
@@ -584,6 +612,10 @@ svg text { font-family: var(--font-body); }
     var most = rows.filter(function (r) { return r.used > 0; }).sort(function (a, b) { return b.used - a.used || a.t.ref.localeCompare(b.t.ref); });
     var least = rows.slice().sort(function (a, b) { return a.used - b.used || (a.last || "").localeCompare(b.last || "") || b.t.stock - a.t.stock || a.t.ref.localeCompare(b.t.ref); });
     var top = most.length ? most[0].used : 1;
+    var fb = {}; rows.forEach(function (r) { var f = r.t.famille || "(sans famille)"; fb[f] = fb[f] || { n: 0, used: 0 }; fb[f].n++; fb[f].used += r.used; });
+    var fkeys = Object.keys(fb).sort(function (a, b) { return fb[b].used - fb[a].used; });
+    var famBox = (fkeys.length > 1 || fkeys[0] !== "(sans famille)") ? '<div class="box" style="margin-top:20px"><div class="hd">Par famille d\'outils (' + usePer + ' jours)</div><div class="tablewrap"><table><thead><tr><th>Famille</th><th class="num">Outils</th><th class="num">Pièces sorties</th><th class="num">Part</th></tr></thead><tbody>' +
+      fkeys.map(function (k) { return '<tr><td><b>' + esc(k) + '</b></td><td class="num">' + fb[k].n + '</td><td class="num"><b>' + fb[k].used + '</b></td><td class="num">' + (total > 0 ? Math.round(fb[k].used / total * 100) + " %" : "—") + '</td></tr>'; }).join("") + '</tbody></table></div></div>' : "";
     var h = '<h1>Utilisation des outils</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px">' +
       '<span class="muted">Période :</span>' + [7, 30, 90].map(function (d) { return '<button type="button" class="btn-undo" data-per="' + d + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (d === usePer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + d + ' jours</button>'; }).join("") +
       '<span class="muted">Total sorti : <b>' + total + '</b> pièce(s)</span></div><div class="grid2">';
@@ -593,7 +625,7 @@ svg text { font-family: var(--font-body); }
     h += '<div class="box"><div class="hd">Les moins utilisés (' + usePer + ' jours)</div><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Sorti</th><th>Dernière sortie</th><th class="num">Stock</th></tr></thead><tbody>' +
       least.slice(0, 8).map(function (r) { return '<tr><td>' + esc(r.t.ref) + ' <span class="muted">' + esc(r.t.label) + '</span></td><td class="num">' + (r.used ? '<b>' + r.used + '</b>' : '<span class="muted">0</span>') + '</td><td>' + (r.last ? fmtDate(r.last).slice(0, 10) : '<span class="muted">jamais sorti</span>') + '</td><td class="num">' + r.t.stock + '</td></tr>'; }).join("") +
       '</tbody></table></div></div></div>' +
-      '<p class="muted" style="font-size:13.5px">Utilisation = pièces sorties du magasin sur la période, sans les corrections d\'inventaire et sans les sorties annulées. Un outil très stocké mais rarement sorti est un candidat pour réduire son stock désiré ; un outil très utilisé avec peu de stock mérite un seuil mini plus haut.</p>';
+      famBox + '<p class="muted" style="font-size:13.5px">Utilisation = pièces sorties du magasin sur la période, sans les corrections d\'inventaire et sans les sorties annulées. Un outil très stocké mais rarement sorti est un candidat pour réduire son stock désiré ; un outil très utilisé avec peu de stock mérite un seuil mini plus haut.</p>';
     return h;
   }
   function wireUtil() {
@@ -679,7 +711,7 @@ svg text { font-family: var(--font-body); }
       '.et-lab .c{flex:1;min-height:0;display:flex;justify-content:center;padding:1mm 3mm}.et-lab .c svg{display:block;width:100%;height:100%}.et-lab .t{font-size:6.5pt;text-align:center;color:#333}' +
       '@media print{.demo-note,.topbar,.rm-test-strip,.rm-test-wm,.et-ctrl{display:none!important}main{padding:0!important}.et-sheet{border:0;box-shadow:none;padding:0}@page{size:A4;margin:8mm}}</style>' +
       '<div class="et-sheet">' + sel.map(function (t) {
-        var one = '<div class="et-lab"><div class="r">' + esc(t.ref) + '</div><div class="d">' + esc(t.label) + '</div><div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div>';
+        var one = '<div class="et-lab"><div class="r">' + esc(t.ref) + '</div><div class="d">' + esc(t.label) + '</div>' + (t.emplacement ? '<div class="d" style="font-weight:700">📍 ' + esc(t.emplacement) + '</div>' : "") + '<div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div>';
         return new Array(etq.copies + 1).join(one);
       }).join("") + '</div>';
     return h;
@@ -695,7 +727,7 @@ svg text { font-family: var(--font-body); }
 
 
   /* ---------- Import / export Excel (comme import_export.php) : vrai fichier .xlsx écrit et lu sans bibliothèque ---------- */
-  var XL_HEAD = ["Référence", "Désignation", "Code-barres", "Stock", "Seuil mini", "Stock désiré", "Prix unitaire (€ HT)"];
+  var XL_HEAD = ["Référence", "Désignation", "Famille", "Emplacement", "Code-barres", "Stock", "Seuil mini", "Stock désiré", "Prix unitaire (€ HT)"];
   var crcT = null;
   function crc32(u8) {
     if (!crcT) { crcT = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) { c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; } crcT[n] = c >>> 0; } }
@@ -718,7 +750,7 @@ svg text { font-family: var(--font-body); }
   function xmlEsc(v) { return String(v).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function colName(i) { return String.fromCharCode(65 + i); }
   function xlsxBlob(rows) {   // rows : tableau de lignes ; nombres écrits comme nombres (les zéros sont conservés), le reste comme texte
-    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>' + XL_HEAD.map(function (h, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + [22, 38, 20, 10, 12, 14, 20][i] + '" customWidth="1"/>'; }).join("") + '</cols><sheetData>' +
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>' + XL_HEAD.map(function (h, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + [22, 38, 22, 24, 20, 10, 12, 14, 20][i] + '" customWidth="1"/>'; }).join("") + '</cols><sheetData>' +
       rows.map(function (r, ri) { return '<row r="' + (ri + 1) + '">' + r.map(function (v, ci) { var ref = colName(ci) + (ri + 1); if (v === null || v === "") { return ""; } return typeof v === "number" ? '<c r="' + ref + '"><v>' + v + '</v></c>' : '<c r="' + ref + '" t="inlineStr"><is><t>' + xmlEsc(v) + '</t></is></c>'; }).join("") + '</row>'; }).join("") + '</sheetData></worksheet>';
     return zipStore([
       { name: "[Content_Types].xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
@@ -777,7 +809,7 @@ svg text { font-family: var(--font-body); }
     return rows.map(function (r) { return r.map(function (v) { v = v.trim(); return v === "" ? null : v; }); });
   }
   function xlNorm(s) { return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); }
-  var XL_ALIAS = { ref: ["reference", "ref"], label: ["designation", "libelle", "label", "nom"], barcode: ["codebarres", "codebarre", "barcode"], stock: ["stock", "stockactuel", "quantite", "stockcompte"],
+  var XL_ALIAS = { ref: ["reference", "ref"], label: ["designation", "libelle", "label", "nom"], famille: ["famille", "famillesdoutils", "familledoutil", "categorie", "type"], emplacement: ["emplacement", "rangement", "bac", "localisation", "lieu"], barcode: ["codebarres", "codebarre", "barcode"], stock: ["stock", "stockactuel", "quantite", "stockcompte"],
     seuil: ["seuilmini", "seuil", "stockminimum", "stockmini"], desired: ["stockdesire", "desire", "stockdesired"], price: ["prixunitaireht", "prixunitaire", "prix", "prixht", "prixdachat", "prixachat", "cout", "coutunitaire", "prixunitaireeuroht"] };
   // Aperçu : ce que l'import ferait (rien n'est écrit), mêmes règles que rmeca_xl_plan() du module
   function xlPlan(rows) {
@@ -788,14 +820,15 @@ svg text { font-family: var(--font-body); }
     if (rows.length - 1 > 500) { out.fatal = "Trop de lignes (maximum 500 par import)."; return out; }
     var byref = {}, codes = {}, seen = {};
     S.tools.forEach(function (t) { byref[t.ref.toLowerCase()] = t; if (t.barcode) { codes[t.barcode] = t.ref; } });
+    function txt(v, err, name) { if (v === null) { return null; } if (v.trim() === "-") { return ""; } if (v.trim().length > 100) { err.push(name + " trop long (100 caractères maximum)"); return null; } return v.replace(/\s+/g, " ").trim(); }
     function int(v, err, name) { if (v === null) { return null; } v = String(v).replace(",", "."); if (isNaN(v) || parseFloat(v) !== Math.floor(parseFloat(v))) { err.push(name + " : « " + v + " » n'est pas un nombre entier"); return null; } if (parseFloat(v) < 0) { err.push(name + " : valeur négative"); return null; } return parseInt(v, 10); }
     function dec(v, err, name) { if (v === null) { return null; } v = String(v).replace(/[\s€]/g, "").replace(",", "."); if (isNaN(v) || v === "") { err.push(name + " : « " + v + " » n'est pas un nombre"); return null; } if (parseFloat(v) < 0 || parseFloat(v) > 1000000) { err.push(name + " : valeur hors limites"); return null; } return Math.round(parseFloat(v) * 10000) / 10000; }
     for (var i = 1; i < rows.length; i++) {
       var line = rows[i];
       function g(k) { return map[k] !== undefined && line[map[k]] !== undefined ? line[map[k]] : null; }
-      if (["ref", "label", "barcode", "stock", "seuil", "desired", "price"].every(function (k) { return g(k) === null; })) { continue; }
+      if (["ref", "label", "barcode", "stock", "seuil", "desired", "price", "famille", "emplacement"].every(function (k) { return g(k) === null; })) { continue; }
       var err = [], ref = g("ref");
-      var it = { line: i + 1, ref: ref || "", action: "", changes: [], error: "", label: g("label"), barcode: g("barcode"), stock: int(g("stock"), err, "Stock"), seuil: int(g("seuil"), err, "Seuil mini"), desired: int(g("desired"), err, "Stock désiré"), price: dec(g("price"), err, "Prix unitaire") };
+      var it = { line: i + 1, ref: ref || "", action: "", changes: [], error: "", label: g("label"), barcode: g("barcode"), stock: int(g("stock"), err, "Stock"), seuil: int(g("seuil"), err, "Seuil mini"), desired: int(g("desired"), err, "Stock désiré"), price: dec(g("price"), err, "Prix unitaire"), famille: txt(g("famille"), err, "Famille"), emplacement: txt(g("emplacement"), err, "Emplacement") };
       if (ref === null) { err.push("Référence manquante"); }
       else if (!/^[A-Za-z0-9_.\-]{1,60}$/.test(ref)) { err.push("Référence « " + ref + " » non valide (lettres, chiffres, _ - . seulement, sans espace)"); }
       else if (seen[ref.toLowerCase()]) { err.push("Référence en double (déjà ligne " + seen[ref.toLowerCase()] + ")"); } else { seen[ref.toLowerCase()] = i + 1; }
@@ -809,6 +842,7 @@ svg text { font-family: var(--font-body); }
             if (it.stock !== null) { it.changes.push("Stock : " + it.stock); }
             if (it.seuil) { it.changes.push("Seuil mini : " + it.seuil); } if (it.desired) { it.changes.push("Stock désiré : " + it.desired); }
             if (it.barcode !== null) { it.changes.push("Code-barres : " + it.barcode); } if (it.price) { it.changes.push("Prix : " + it.price + " €"); }
+            if (it.famille) { it.changes.push("Famille : " + it.famille); } if (it.emplacement) { it.changes.push("Emplacement : " + it.emplacement); }
           }
         } else {
           it.ref = cur.ref;
@@ -818,6 +852,8 @@ svg text { font-family: var(--font-body); }
           if (it.seuil !== null && it.seuil !== cur.seuil) { it.changes.push("Seuil mini : " + cur.seuil + " → " + it.seuil); }
           if (it.desired !== null && it.desired !== cur.desired) { it.changes.push("Stock désiré : " + cur.desired + " → " + it.desired); }
           if (it.price !== null && Math.abs(it.price - (cur.price || 0)) > 0.00005) { it.changes.push("Prix : " + (cur.price > 0 ? cur.price : "—") + " → " + it.price + " €"); }
+          if (it.famille !== null && it.famille !== (cur.famille || "")) { it.changes.push("Famille : " + (cur.famille || "—") + " → " + (it.famille || "(effacé)")); }
+          if (it.emplacement !== null && it.emplacement !== (cur.emplacement || "")) { it.changes.push("Emplacement : " + (cur.emplacement || "—") + " → " + (it.emplacement || "(effacé)")); }
           it.action = it.changes.length ? "update" : "same";
         }
       }
@@ -832,8 +868,8 @@ svg text { font-family: var(--font-body); }
     plan.items.forEach(function (it) {
       if (it.action !== "create" && it.action !== "update") { return; }
       var t;
-      if (it.action === "create") { t = { ref: it.ref, label: it.label, stock: 0, seuil: it.seuil || 0, desired: it.desired || 0, price: it.price || 0, barcode: it.barcode || "" }; S.tools.push(t); made++; }
-      else { t = tool(it.ref); upd++; if (it.label !== null) { t.label = it.label; } if (it.barcode !== null) { t.barcode = it.barcode; } if (it.seuil !== null) { t.seuil = it.seuil; } if (it.desired !== null) { t.desired = it.desired; } if (it.price !== null) { t.price = it.price; } }
+      if (it.action === "create") { t = { ref: it.ref, label: it.label, stock: 0, seuil: it.seuil || 0, desired: it.desired || 0, price: it.price || 0, barcode: it.barcode || "", famille: it.famille || "", emplacement: it.emplacement || "" }; S.tools.push(t); made++; }
+      else { t = tool(it.ref); upd++; if (it.label !== null) { t.label = it.label; } if (it.barcode !== null) { t.barcode = it.barcode; } if (it.seuil !== null) { t.seuil = it.seuil; } if (it.desired !== null) { t.desired = it.desired; } if (it.price !== null) { t.price = it.price; } if (it.famille !== null) { t.famille = it.famille; } if (it.emplacement !== null) { t.emplacement = it.emplacement; } }
       if (it.stock !== null && it.stock !== t.stock) { S.moves.unshift({ t: nowIso(), ref: t.ref, qty: it.stock - t.stock, label: "Inventaire (import Excel) : " + t.stock + " → " + it.stock, who: "vous (démo)" }); t.stock = it.stock; moves++; }
     });
     cleanStatus(); save();
@@ -861,7 +897,7 @@ svg text { font-family: var(--font-body); }
     return h;
   }
   function wireXl() {
-    function rows() { return [XL_HEAD].concat(S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) { return [t.ref, t.label, t.barcode || "", t.stock, t.seuil, t.desired, t.price || 0]; })); }
+    function rows() { return [XL_HEAD].concat(S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) { return [t.ref, t.label, t.famille || "", t.emplacement || "", t.barcode || "", t.stock, t.seuil, t.desired, t.price || 0]; })); }
     document.getElementById("xlexport").addEventListener("click", function () { download(xlsxBlob(rows()), "outils_" + nowIso().slice(0, 10) + ".xlsx"); });
     document.getElementById("xltemplate").addEventListener("click", function () { download(xlsxBlob([XL_HEAD]), "modele_import_outils.xlsx"); });
     var f = document.getElementById("xlfile");
@@ -894,10 +930,13 @@ svg text { font-family: var(--font-body); }
     var h = '<h1>Saisie rapide : stock et seuils</h1>' +
       '<p class="intro">Tapez le <b>stock compté</b> en magasin pour chaque outil, puis réglez le <b>seuil mini</b> et le <b>stock désiré</b>. Laissez « Stock compté » vide pour ne pas toucher au stock ; videz un seuil pour le supprimer. Un seul bouton enregistre tout ; chaque écart de stock est tracé dans l\'historique comme « Inventaire ».</p>';
     if (saisieMsg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow">' + esc(saisieMsg) + '</div></div>'; saisieMsg = null; }
-    h += '<form id="saisieform" autocomplete="off"><div class="box"><div class="tablewrap"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
+    h += famDatalist() + '<form id="saisieform" autocomplete="off"><div class="box"><div class="tablewrap"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
       S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) {
         var sv = t.seuil > 0 ? t.seuil : "", dv = t.desired > 0 ? t.desired : "";
-        return '<tr><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td><td class="num">' + t.stock + '</td>' +
+        return '<tr><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td>' +
+          '<td><input type="text" list="dl-fam" maxlength="100" style="width:130px;text-align:left" data-f="famille" data-ref="' + esc(t.ref) + '" data-orig="' + esc(t.famille || "") + '" value="' + esc(t.famille || "") + '" aria-label="Famille de ' + esc(t.ref) + '"></td>' +
+          '<td><input type="text" maxlength="100" style="width:150px;text-align:left" data-f="empl" data-ref="' + esc(t.ref) + '" data-orig="' + esc(t.emplacement || "") + '" value="' + esc(t.emplacement || "") + '" aria-label="Emplacement de ' + esc(t.ref) + '"></td>' +
+          '<td class="num">' + t.stock + '</td>' +
           '<td class="num"><input type="number" min="0" step="1" data-f="counted" data-ref="' + esc(t.ref) + '" placeholder="' + t.stock + '"></td>' +
           '<td class="num"><input type="number" min="0" step="1" data-f="seuil" data-ref="' + esc(t.ref) + '" data-orig="' + sv + '" value="' + sv + '"></td>' +
           '<td class="num"><input type="number" min="0" step="1" data-f="desired" data-ref="' + esc(t.ref) + '" data-orig="' + dv + '" value="' + dv + '"></td>' +
@@ -926,6 +965,8 @@ svg text { font-family: var(--font-body); }
         var pr = form.querySelector('[data-f="price"][data-ref="' + t.ref + '"]').value.trim().replace(",", ".");
         if (pr !== "" && (isNaN(pr) || parseFloat(pr) < 0)) { errs.push(t.ref + " : prix non valide"); }
         else if ((pr === "" ? 0 : parseFloat(pr)) !== (t.price || 0)) { p.price = pr === "" ? 0 : parseFloat(pr); }
+        var fm = form.querySelector('[data-f="famille"][data-ref="' + t.ref + '"]').value.replace(/\s+/g, " ").trim(), em = form.querySelector('[data-f="empl"][data-ref="' + t.ref + '"]').value.replace(/\s+/g, " ").trim();
+        if (fm !== (t.famille || "")) { p.fam = fm; } if (em !== (t.emplacement || "")) { p.emp = em; }
         if (c !== "") { var q = parseFloat(c); if (q < 0) { errs.push(t.ref + " : quantité négative ignorée"); } else if (q !== t.stock) { p.stock = q; } }
         var sv = s === "" ? 0 : parseInt(s, 10), dv = d === "" ? 0 : parseInt(d, 10);
         if (sv < 0 || dv < 0) { errs.push(t.ref + " : valeur négative ignorée"); }
@@ -942,6 +983,8 @@ svg text { font-family: var(--font-body); }
         if (p.seuil !== undefined) { p.t.seuil = p.seuil; nbs++; }
         if (p.desired !== undefined) { p.t.desired = p.desired; nbs++; }
         if (p.price !== undefined) { p.t.price = p.price; nbs++; }
+        if (p.fam !== undefined) { p.t.famille = p.fam; nbs++; }
+        if (p.emp !== undefined) { p.t.emplacement = p.emp; nbs++; }
       });
       cleanStatus();
       save();
