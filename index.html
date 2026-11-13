@@ -170,6 +170,7 @@ svg text { font-family: var(--font-body); }
       <a href="#historique" data-v="historique">Historique</a>
       <a href="#etiquettes" data-v="etiquettes">Étiquettes</a>
       <a href="#excel" data-v="excel">Excel</a>
+      <a href="#supprimer" data-v="supprimer">Supprimer</a>
     </nav>
   </div>
 </header>
@@ -917,6 +918,73 @@ svg text { font-family: var(--font-body); }
     if (ok) { ok.addEventListener("click", function () { xlState.msg = xlApply(xlState.plan); xlState.plan = null; render(); window.scrollTo(0, 0); }); }
   }
 
+  /* ---------- Supprimer des outils (comme supprimer.php) : un par un avec affichage du suivant, ou par lot ---------- */
+  var sup = { n: 0, fam: "", flash: null, noask: false };
+  function delTool(ref) {   // suppression définitive : outil, historique de ses mouvements, suivi, ruptures, liste de scan
+    S.tools = S.tools.filter(function (t) { return t.ref !== ref; });
+    S.moves = S.moves.filter(function (m) { return m.ref !== ref; });
+    delete S.status[ref];
+    S.rup = S.rup.filter(function (r) { return r.ref !== ref; });
+    S.of.lines = S.of.lines.filter(function (l) { return l.ref !== ref; });
+    save();
+  }
+  function supList() { return S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).filter(function (t) { return !sup.fam || (t.famille || "").toLowerCase() === sup.fam; }); }
+  function vSup() {
+    var list = supList(), total = list.length, f = familles(), keys = Object.keys(f).sort();
+    if (sup.n > Math.max(0, total - 1)) { sup.n = Math.max(0, total - 1); }
+    var h = '<h1>Supprimer des outils</h1><div class="banner warn"><span class="ic">⚠</span><div class="grow">La suppression est <b>définitive</b> : l\'outil, son stock, l\'historique de ses mouvements, son suivi de commande, ses ruptures, sa famille et son emplacement sont effacés. Dans cette démo, « Remettre la démo à zéro » restaure tout.</div></div>';
+    if (sup.flash) { h += '<div class="banner ' + (sup.flash.ok ? "ok" : "ko") + '"><span class="ic">' + (sup.flash.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(sup.flash.msg) + '</b></div></div>'; }
+    if (keys.length) { h += '<div class="row" style="justify-content:flex-start"><label class="muted">Ne montrer que la famille : <select id="supfam" style="min-width:0"><option value="">Toutes (' + S.tools.length + ' outils)</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '"' + (sup.fam === k ? " selected" : "") + '>' + esc(f[k]) + '</option>'; }).join("") + '</select></label></div>'; }
+    h += '<div class="box"><div class="hd">1. Un par un : le suivant s\'affiche après chaque suppression</div><div class="bd">';
+    if (!total) { h += '<p>' + (sup.fam ? "Aucun outil dans cette famille." : "Il n'y a plus aucun outil.") + '</p>'; }
+    else {
+      var t = list[sup.n], nb = S.moves.filter(function (m) { return m.ref === t.ref; }).length;
+      h += '<div class="muted">Outil ' + (sup.n + 1) + ' sur ' + total + '</div><div style="font-size:30px;font-weight:700;color:var(--navy);line-height:1.1;margin:4px 0 10px">' + esc(t.ref) + '</div>' +
+        '<table style="max-width:560px"><tbody><tr><td class="muted">Désignation</td><td><b>' + esc(t.label) + '</b></td></tr><tr><td class="muted">Famille</td><td><b>' + (t.famille ? esc(t.famille) : "—") + '</b></td></tr><tr><td class="muted">Emplacement</td><td><b>' + (t.emplacement ? esc(t.emplacement) : "—") + '</b></td></tr>' +
+        '<tr><td class="muted">Stock</td><td><b>' + t.stock + '</b>' + (t.seuil > 0 ? ' <span class="muted">(seuil mini ' + t.seuil + ')</span>' : "") + '</td></tr><tr><td class="muted">Prix unitaire</td><td><b>' + (t.price > 0 ? fmtEur(t.price) : "—") + '</b></td></tr><tr><td class="muted">Historique</td><td><b>' + nb + ' mouvement(s) de stock</b> (supprimés avec l\'outil)</td></tr></tbody></table>' +
+        '<div class="row" style="justify-content:flex-start;margin-top:16px"><button type="button" class="btn-save" id="supdel" style="background:var(--red-btn)">🗑 Supprimer cet outil et afficher le suivant</button>' +
+        (sup.n + 1 < total ? '<button type="button" class="btn-save" id="supnext">Garder, afficher le suivant →</button>' : "") + (sup.n > 0 ? '<button type="button" class="btn-undo" id="supprev">← Précédent</button>' : "") + '</div>' +
+        '<p style="margin-top:12px"><label><input type="checkbox" id="supnoask"' + (sup.noask ? " checked" : "") + '> Ne plus me demander confirmation à chaque suppression</label></p>';
+    }
+    h += '</div></div><div class="box" style="margin-top:20px"><div class="hd">2. Par lot : cocher plusieurs outils</div><div class="bd">';
+    if (!total) { h += '<p class="muted">Rien à afficher.</p>'; }
+    else {
+      h += '<div class="row" style="justify-content:flex-start;margin-bottom:10px"><input type="search" id="supq" placeholder="Rechercher (référence, désignation, emplacement)…" style="font:inherit;height:38px;padding:0 12px;border:1px solid #c9cfd8;border-radius:8px;min-width:280px"><button type="button" class="btn-undo" id="supvis">Cocher les outils affichés</button><button type="button" class="btn-undo" id="supunc">Tout décocher</button><span class="muted" id="supcnt"></span></div>' +
+        '<div style="max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:10px"><table><thead><tr><th></th><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock</th></tr></thead><tbody>' +
+        list.map(function (o) { return '<tr class="suprow" data-txt="' + esc((o.ref + " " + o.label + " " + (o.famille || "") + " " + (o.emplacement || "")).toLowerCase()) + '"><td><input type="checkbox" class="supone" data-ref="' + esc(o.ref) + '" aria-label="' + esc(o.ref) + '"></td><td><b>' + esc(o.ref) + '</b></td><td>' + esc(o.label) + '</td><td>' + esc(o.famille || "") + '</td><td>' + esc(o.emplacement || "") + '</td><td class="num">' + o.stock + '</td></tr>'; }).join("") + '</tbody></table></div>' +
+        '<div class="row" style="justify-content:flex-start;margin-top:14px"><label>Pour confirmer, tapez <b>SUPPRIMER</b> : <input type="text" id="supword" autocomplete="off" style="font:inherit;height:38px;width:140px;padding:0 10px;border:1px solid #c9cfd8;border-radius:8px"></label><button type="button" class="btn-save" id="supbulk" style="background:var(--red-btn)" disabled>🗑 Supprimer les outils cochés</button></div>';
+    }
+    return h + '</div></div>';
+  }
+  function wireSup() {
+    var d = document.getElementById("supdel");
+    if (d) {
+      d.addEventListener("click", function () {
+        var t = supList()[sup.n];
+        if (!document.getElementById("supnoask").checked && !confirm("Supprimer définitivement " + t.ref + " ?")) { return; }
+        delTool(t.ref); sup.flash = { ok: true, msg: "Outil « " + t.ref + " » supprimé définitivement." }; render();
+      });
+      document.getElementById("supnoask").addEventListener("change", function (e) { sup.noask = e.target.checked; });
+    }
+    var nx = document.getElementById("supnext"); if (nx) { nx.addEventListener("click", function () { sup.n++; sup.flash = null; render(); }); }
+    var pv = document.getElementById("supprev"); if (pv) { pv.addEventListener("click", function () { sup.n--; sup.flash = null; render(); }); }
+    var fm = document.getElementById("supfam"); if (fm) { fm.addEventListener("change", function () { sup.fam = fm.value; sup.n = 0; sup.flash = null; render(); }); }
+    var q = document.getElementById("supq"); if (!q) { return; }
+    var rows = document.querySelectorAll(".suprow"), ones = document.querySelectorAll(".supone"), cnt = document.getElementById("supcnt"), word = document.getElementById("supword"), btn = document.getElementById("supbulk");
+    function checked() { var c = 0; ones.forEach(function (o) { if (o.checked) { c++; } }); return c; }
+    function upd() { var c = checked(); cnt.textContent = c + " coché(s)"; btn.disabled = !(c > 0 && word.value.trim() === "SUPPRIMER"); btn.textContent = c > 0 ? "🗑 Supprimer les " + c + " outil(s) cochés" : "🗑 Supprimer les outils cochés"; }
+    q.addEventListener("input", function () { var t = q.value.trim().toLowerCase(); rows.forEach(function (r) { r.style.display = (!t || r.getAttribute("data-txt").indexOf(t) >= 0) ? "" : "none"; }); });
+    document.getElementById("supvis").addEventListener("click", function () { rows.forEach(function (r) { if (r.style.display !== "none") { r.querySelector(".supone").checked = true; } }); upd(); });
+    document.getElementById("supunc").addEventListener("click", function () { ones.forEach(function (o) { o.checked = false; }); upd(); });
+    ones.forEach(function (o) { o.addEventListener("change", upd); }); word.addEventListener("input", upd);
+    btn.addEventListener("click", function () {
+      var refs = []; ones.forEach(function (o) { if (o.checked) { refs.push(o.getAttribute("data-ref")); } });
+      if (!confirm("Supprimer définitivement " + refs.length + " outil(s) ? Cette action est irréversible.")) { return; }
+      refs.forEach(delTool); sup.flash = { ok: true, msg: refs.length + " outil(s) supprimé(s) définitivement." }; render();
+    });
+    upd();
+  }
+
   function vHisto() {
     return '<h1>Historique des mouvements</h1><p class="intro">Qui, quand, quel outil, combien et pour quelle machine. Les annulations restent visibles.</p>' +
       '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
@@ -993,7 +1061,7 @@ svg text { font-family: var(--font-body); }
     });
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, saisie: vSaisie, historique: vHisto };
+  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
@@ -1007,13 +1075,14 @@ svg text { font-family: var(--font-body); }
     if (v === "ruptures") { wireRupt(); }
     if (v === "etiquettes") { wireEtiq(); }
     if (v === "excel") { wireXl(); }
+    if (v === "supprimer") { wireSup(); }
     if (v === "saisie") { wireSaisie(); }
   }
 
   document.getElementById("reset").addEventListener("click", function () {
     S = fresh(); ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
   });
-  window.addEventListener("hashchange", function () { ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", function () { sup.flash = null; ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
   render();
 })();
 </script>
