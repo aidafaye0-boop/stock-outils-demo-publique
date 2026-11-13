@@ -817,7 +817,7 @@ svg text { font-family: var(--font-body); }
     if (!rows.length) { out.fatal = "Le fichier est vide."; return out; }
     var map = {}; rows[0].forEach(function (h, i) { var n = xlNorm(h); Object.keys(XL_ALIAS).forEach(function (k) { if (XL_ALIAS[k].indexOf(n) >= 0 && map[k] === undefined) { map[k] = i; } }); });
     if (map.ref === undefined) { out.fatal = "Colonne « Référence » introuvable sur la première ligne. Utilisez le fichier téléchargé avec « Exporter » ou le modèle."; return out; }
-    if (rows.length - 1 > 500) { out.fatal = "Trop de lignes (maximum 500 par import)."; return out; }
+    if (rows.length - 1 > 1000) { out.fatal = "Trop de lignes (maximum 1000 par import)."; return out; }
     var byref = {}, codes = {}, seen = {};
     S.tools.forEach(function (t) { byref[t.ref.toLowerCase()] = t; if (t.barcode) { codes[t.barcode] = t.ref; } });
     function txt(v, err, name) { if (v === null) { return null; } if (v.trim() === "-") { return ""; } if (v.trim().length > 100) { err.push(name + " trop long (100 caractères maximum)"); return null; } return v.replace(/\s+/g, " ").trim(); }
