@@ -368,7 +368,7 @@ svg text { font-family: var(--font-body); }
   }
 
   function histogram(list) {
-    var W = 900, H = 300, L = 34, B = 34, T = 14, Rr = 8;
+    var rot = list.length > 14, W = 900, H = rot ? 360 : 300, L = 34, B = rot ? 94 : 34, T = 14, Rr = 8;
     var maxv = 0; list.forEach(function (t) { maxv = Math.max(maxv, t.stock, t.desired, t.seuil); });
     var top = Math.max(5, Math.ceil(maxv / 5) * 5), ph = H - B - T, pw = W - L - Rr;
     function y(v) { return T + ph - v / top * ph; }
@@ -378,16 +378,41 @@ svg text { font-family: var(--font-body); }
     }
     var col = { r: "#d03b3b", y: "#fab219", g: "#0ca30c", n: "#8a8a86" };
     list.forEach(function (t, i) {
-      var x = L + i * bw + bw * 0.18, w = bw * 0.64, h = t.stock / top * ph, y0 = T + ph, r = Math.min(4, w / 2, h);
+      var x = L + i * bw + bw * 0.18, w = bw * 0.64, h = Math.max(t.stock / top * ph, 2), y0 = T + ph, r = Math.min(4, w / 2, h / 2);
       if (h > 0) {
         s += '<path d="M' + x + ',' + y0 + ' V' + (y0 - h + r) + ' Q' + x + ',' + (y0 - h) + ' ' + (x + r) + ',' + (y0 - h) + ' H' + (x + w - r) + ' Q' + (x + w) + ',' + (y0 - h) + ' ' + (x + w) + ',' + (y0 - h + r) + ' V' + y0 + ' Z" fill="' + col[status(t).k] + '"><title>' + t.ref + ' : stock ' + t.stock + ', seuil ' + t.seuil + ', désiré ' + t.desired + '</title></path>';
       }
       s += '<line x1="' + (L + i * bw + 2) + '" x2="' + (L + (i + 1) * bw - 2) + '" y1="' + y(t.seuil) + '" y2="' + y(t.seuil) + '" stroke="#263c5c" stroke-width="2"/>';
       s += '<line x1="' + (L + i * bw + 2) + '" x2="' + (L + (i + 1) * bw - 2) + '" y1="' + y(t.desired) + '" y2="' + y(t.desired) + '" stroke="#8a94a3" stroke-width="1.5" stroke-dasharray="4 3"/>';
-      s += '<text x="' + (L + i * bw + bw / 2) + '" y="' + (H - 12) + '" text-anchor="middle" font-size="11" fill="#5d6877">' + t.ref.slice(-4) + '</text>';
+      if (rot) { s += '<text transform="translate(' + (L + i * bw + bw / 2 + 4) + ',' + (T + ph + 14) + ') rotate(-60)" text-anchor="end" font-size="12" fill="#5d6877">' + t.ref + '</text>'; }
+      else { s += '<text x="' + (L + i * bw + bw / 2) + '" y="' + (H - 12) + '" text-anchor="middle" font-size="11" fill="#5d6877">' + t.ref.slice(-4) + '</text>'; }
     });
     s += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + (T + ph) + '" y2="' + (T + ph) + '" stroke="#b7bdc6"/>';
     return '<div class="tablewrap"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;min-width:560px;height:auto" role="img" aria-label="Stock par outil">' + s + '</svg></div>';
+  }
+
+  // Beaucoup d'outils : l'histogramme ne montre que les 30 plus « en tension » (stock bas par rapport au seuil)
+  function tension(list) {
+    if (list.length <= 40) { return list; }
+    var c = list.filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
+    if (!c.length) { c = list.slice(); }
+    c.sort(function (a, b) { var ra = a.seuil > 0 ? a.stock / a.seuil : 99, rb = b.seuil > 0 ? b.stock / b.seuil : 99; return ra - rb || (a.ref < b.ref ? -1 : 1); });
+    return c.slice(0, 30);
+  }
+  function famBars(list) {
+    var fb = {}, names = [];
+    list.forEach(function (t) { var f = t.famille || "(sans famille)"; if (!fb[f]) { fb[f] = { r: 0, y: 0, g: 0, n: 0 }; names.push(f); } fb[f][status(t).k]++; });
+    if (names.length < 2 && names[0] === "(sans famille)") { return ""; }
+    var tot = function (f) { return fb[f].r + fb[f].y + fb[f].g + fb[f].n; };
+    names.sort(function (a, b) { return fb[b].r - fb[a].r || tot(b) - tot(a); });
+    var mx = 1; names.forEach(function (f) { mx = Math.max(mx, tot(f)); });
+    var col = { r: "var(--red)", y: "var(--yellow)", g: "var(--green)", n: "var(--grey)" };
+    return '<div class="box" style="margin:16px 0"><div class="hd">État des outils par famille</div><div class="bd">' + names.map(function (f) {
+      var n = tot(f);
+      return '<div style="display:grid;grid-template-columns:130px 1fr 110px;gap:10px;align-items:center;padding:4px 0"><b>' + esc(f) + '</b><div style="width:' + Math.round(n / mx * 100) + '%;min-width:30px;display:flex;height:20px;border-radius:5px;overflow:hidden;background:#eceef2">' +
+        ["r", "y", "g", "n"].map(function (k) { return fb[f][k] ? '<div title="' + fb[f][k] + ' outil(s)" style="width:' + (fb[f][k] / n * 100) + '%;background:' + col[k] + '"></div>' : ""; }).join("") +
+        '</div><span class="muted">' + n + ' outil(s)' + (fb[f].r ? ' · <b style="color:var(--red)">' + fb[f].r + ' ▼</b>' : '') + '</span></div>';
+    }).join("") + '</div></div>';
   }
 
   function vSeuils() {
@@ -401,9 +426,9 @@ svg text { font-family: var(--font-body); }
           '<span><span class="pill g">✓ ' + counts.g + '</span> OK</span>' +
           '<span><span class="pill n">– ' + counts.n + '</span> Pas de seuil</span>' +
         '</div></div></div>' +
-      '<div class="box"><div class="hd">Stock par outil <span class="muted">(références OUT-…)</span></div><div class="bd">' +
+      '<div class="box"><div class="hd">' + (list.length > 40 ? 'Les 30 outils les plus en tension <span class="muted">(sur ' + list.length + ')</span>' : 'Stock par outil <span class="muted">(références OUT-…)</span>') + '</div><div class="bd">' +
         '<div class="legend"><span><i style="background:var(--red)"></i>Sous le seuil</span><span><i style="background:var(--yellow)"></i>Proche</span><span><i style="background:var(--green)"></i>OK</span><span><i style="background:var(--navy);height:3px;vertical-align:3px"></i>Seuil mini</span><span><i style="background:none;border-top:2px dashed #8a94a3;height:0;vertical-align:3px"></i>Stock désiré</span></div>' +
-        histogram(list) + '</div></div></div>';
+        histogram(tension(list)) + '</div></div></div>' + famBars(list);
     // Résumé du suivi de réapprovisionnement : combien d'outils pour chaque état
     var tracked = {}, nostatus = 0;
     list.forEach(function (t) {
