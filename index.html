@@ -43,6 +43,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .brand { font-weight: 700; letter-spacing: .01em; margin-right: 10px; white-space: nowrap; }
 .brand small { font-weight: 400; opacity: .7; margin-left: 6px; }
 nav { display: flex; flex-wrap: wrap; gap: 4px; }
+.topbar .subrow { padding-block: 0 8px; margin-top: -2px; }
+#subnav a { font-size: 13.5px; padding: 5px 12px; background: rgba(255,255,255,.08); }
+#subnav a.on { background: #fff; }
+#subnav:empty { display: none; }
+#nav a.grp::after { content: " ▾"; font-size: 11px; opacity: .7; }
+html, body { overflow-x: hidden; }
+@media (max-width: 640px) { nav { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; } nav a { white-space: nowrap; flex: none; padding: 8px 11px; } .topbar .in { flex-wrap: wrap; } .brand { width: 100%; } }
 nav a { color: #dfe7f2; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 14.5px; transition: background .15s, color .15s; }
 nav a:hover { background: rgba(255,255,255,.1); }
 nav a.on { background: #fff; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
@@ -116,10 +123,12 @@ tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
 .qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 1px 2px rgba(23,32,44,.05); }
 
 /* Filigrane « Version test » (comme lib/rmecastock.lib.php dans le module) */
-.rm-test-wm { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: min(13vw, 150px); font-weight: 700; letter-spacing: .08em; white-space: nowrap; color: rgba(208,59,59,.11); pointer-events: none; user-select: none; z-index: 9999; }
+.rm-test-wm { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: min(13vw, 150px); font-weight: 700; letter-spacing: .08em; white-space: nowrap; color: rgba(208,59,59,.045); pointer-events: none; user-select: none; z-index: 9999; }
 .rm-test-strip { background: #fff6e0; border-left: 6px solid #fab219; padding: 8px 14px; margin: 14px 0 0; border-radius: 6px; font-size: 14.5px; }
 
 /* Saisie rapide */
+.inv thead th { position: sticky; top: 0; z-index: 1; }
+.savebar { position: sticky; bottom: 0; z-index: 3; display: flex; gap: 14px; align-items: center; justify-content: center; background: rgba(255,255,255,.96); border-top: 1px solid var(--line); padding: 10px 14px; margin: 16px -16px 0; box-shadow: 0 -4px 14px rgba(23,32,44,.08); }
 .inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
 .inv input.changed { background: #fff7d6; border-color: #fab219; }
 .btn-save { font: inherit; font-weight: 600; padding: 11px 26px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(23,32,44,.22); transition: filter .15s, transform .05s; }
@@ -135,14 +144,14 @@ tr.r:hover td { background: #f9e6e6; } tr.y:hover td { background: #fff3d9; }
 .ptab b { display: block; font-size: 26px; line-height: 1.1; } .ptab.r b { color: var(--red); } .ptab.y b { color: #b87f00; }
 .ptab.on { border-color: currentColor; background: #fff; }
 .plist { display: none; } .plist.on { display: block; } .plist .more { display: none; } .plist.all .more { display: grid; }
-.prow { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(110px, 1.4fr) 56px minmax(190px, 1fr); gap: 12px; align-items: center; padding: 5px 6px; border-radius: 6px; text-decoration: none; color: inherit; }
+.prow { display: grid; grid-template-columns: minmax(190px, 1.7fr) minmax(110px, 1.2fr) 56px minmax(240px, 1fr); gap: 12px; align-items: center; padding: 5px 6px; border-radius: 6px; text-decoration: none; color: inherit; }
 .prow:hover, .famrow:hover { background: #eef0f4; } .famrow { cursor: pointer; border-radius: 6px; }
 .pname { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pbar { position: relative; height: 16px; border-radius: 4px; background: #e4e6ea; }
 .pfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px 0 0 4px; }
 .pseuil { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #111; border-radius: 2px; }
 .pdes { position: absolute; top: -2px; bottom: -2px; border-left: 2px dashed #5a5a5a; }
-.pnum { text-align: right; white-space: nowrap; } .pnote { font-size: 13.5px; opacity: .8; white-space: nowrap; }
+.pnum { text-align: right; white-space: nowrap; } .pnote { font-size: 13.5px; opacity: .8; white-space: normal; }
 @media (max-width: 700px) { .prow { grid-template-columns: 1fr 70px; } .prow .pbar { grid-column: 1 / -1; order: 3; } .prow .pnote { grid-column: 1 / -1; order: 4; } }
 .charts { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
@@ -170,25 +179,15 @@ svg text { font-family: var(--font-body); }
 </head>
 <body>
 
-<div class="demo-note gutter" role="note"><b>Démonstration · données fictives</b> — les mouvements faits ici restent dans votre navigateur. <button type="button" id="reset">Remettre la démo à zéro</button></div>
+<div class="demo-note gutter" role="note"><b>Démonstration · données fictives</b> · version test, pas encore en production — les mouvements faits ici restent dans votre navigateur. <button type="button" id="reset">Remettre la démo à zéro</button></div>
 <header class="topbar gutter">
   <div class="in">
     <span class="brand">Stock outils<small>Démonstration</small></span>
-    <nav aria-label="Pages">
-      <a href="#accueil" data-v="accueil">Accueil</a>
-      <a href="#scan" data-v="scan">Scan entrée / sortie</a>
-      <a href="#seuils" data-v="seuils">Seuils</a>
-      <a href="#ruptures" data-v="ruptures">Ruptures</a>
-      <a href="#utilisation" data-v="utilisation">Utilisation</a>
-      <a href="#saisie" data-v="saisie">Saisie rapide</a>
-      <a href="#historique" data-v="historique">Historique</a>
-      <a href="#etiquettes" data-v="etiquettes">Étiquettes</a>
-      <a href="#excel" data-v="excel">Excel</a>
-      <a href="#supprimer" data-v="supprimer">Supprimer</a>
-    </nav>
+    <nav id="nav" aria-label="Pages"></nav>
+  </div>
+  <div class="in subrow"><nav id="subnav" aria-label="Sous-pages"></nav>
   </div>
 </header>
-<div class="gutter"><div class="rm-test-strip" role="note"><b>Version test</b> : outil en phase d'essai, pas encore utilisé en production.</div></div>
 <div class="rm-test-wm" aria-hidden="true">VERSION TEST</div>
 <main class="gutter" id="view"></main>
 
@@ -396,6 +395,7 @@ svg text { font-family: var(--font-body); }
     var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
     var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
       '<div class="ptabs"><button type="button" class="ptab r' + (tab === "r" ? " on" : "") + '" data-ptab="r"><b>' + P.r.length + '</b>▼ sous le seuil</button><button type="button" class="ptab y' + (tab === "y" ? " on" : "") + '" data-ptab="y"><b>' + P.y.length + '</b>▲ proches du seuil</button></div>' +
+      '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' +
       '<div class="legend"><span><i style="background:var(--red)"></i>Stock</span><span><i style="background:#111;height:12px;width:3px;vertical-align:-2px"></i>Seuil mini</span><span><i style="background:none;border-top:2px dashed #8a94a3;height:0;vertical-align:3px"></i>Stock désiré</span></div>';
     ["r", "y"].forEach(function (k) {
       var l = P[k];
@@ -548,7 +548,7 @@ svg text { font-family: var(--font-body); }
       '<div class="state"><span class="dot"></span><span>' + (out ? "Scannez les outils à SORTIR" : "Scannez les outils ENTRÉS (retour ou réception)") + '</span></div>' +
       '<input type="text" class="code" id="ofcode" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
       '<p class="help"><b>Chaque scan ajoute l\'outil à la liste</b> (rien n\'est enregistré tout de suite). Scanner le même outil deux fois ajoute 1 à sa quantité. Un seul outil ? Scannez-le puis validez. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
-      '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' + S.tools.map(function (t) { return '<button type="button" data-ofscan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") + '</div></div>' +
+      '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' + S.tools.slice(0, 16).map(function (t) { return '<button type="button" data-ofscan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") + (S.tools.length > 16 ? '<span class="muted" style="font-size:13px">… et ' + (S.tools.length - 16) + ' autres : tapez la référence ci-dessus</span>' : "") + '</div></div>' +
     '</div>';
     h += '<h2 style="margin-bottom:8px">Outils à enregistrer ' + (o.no ? '<span class="muted">OF ' + esc(o.no) + '</span> ' : '') + '<span class="muted" style="font-weight:400">(' + o.lines.length + ' outil(s), ' + pieces + ' pièce(s))</span></h2>';
     if (!o.lines.length) { h += '<p class="muted">La liste est vide. Le dernier outil scanné apparaît en haut.</p>'; }
@@ -627,7 +627,13 @@ svg text { font-family: var(--font-body); }
   }
   // Met à jour l'affichage sans faire sauter la page (la position de défilement est conservée)
   function keepScroll() { var y = window.scrollY; render(); window.scrollTo(0, y); }
+  function tobuyCsv() {
+    var rows = [["Référence", "Désignation", "Famille", "Emplacement", "Stock", "Seuil mini", "Stock désiré", "À commander", "Prix unitaire (€ HT)", "Montant estimé (€ HT)", "Suivi"]];
+    sorted().forEach(function (t) { var k = status(t).k; if (k !== "r" && k !== "y") { return; } var q = Math.max(0, t.desired - t.stock), st = S.status[t.ref]; rows.push([t.ref, t.label, t.famille || "", t.emplacement || "", t.stock, t.seuil, t.desired, q, t.price || "", q && t.price ? (q * t.price).toFixed(2).replace(".", ",") : "", st ? st.statut : ""]); });
+    csvDownload(rows, "outils_a_commander.csv");
+  }
   function wireSeuils() {
+    var tb = document.getElementById("tobuycsv"); if (tb) { tb.addEventListener("click", tobuyCsv); }
     wireSeuilFilter();
     document.querySelectorAll("[data-st]").forEach(function (sel) {
       sel.addEventListener("change", function () {
@@ -746,25 +752,31 @@ svg text { font-family: var(--font-body); }
 
   /* ---------- Étiquettes codes-barres (comme etiquettes.php) ---------- */
   var ETQ_SIZES = { g: ["Grande : 100 × 50 mm", 100, 50, 20, 11], m: ["Moyenne : 70 × 35 mm (recommandé)", 70, 35, 14, 8.5], p: ["Petite : 50 × 25 mm", 50, 25, 10, 7] };
-  var etq = { off: {}, copies: 1, size: "m" };
+  var etq = { off: {}, copies: 1, size: "m", q: "", fam: "", focus: "" };
+  function etqShown() { var q = etq.q.trim().toLowerCase(); return S.tools.filter(function (t) { return (!etq.fam || (t.famille || "") === etq.fam) && (!q || (t.ref + " " + t.label + " " + (t.emplacement || "")).toLowerCase().indexOf(q) >= 0); }); }
   function vEtiq() {
-    var sz = ETQ_SIZES[etq.size], sel = S.tools.filter(function (t) { return !etq.off[t.ref]; }), n = sel.length * etq.copies;
+    var sz = ETQ_SIZES[etq.size], sel = S.tools.filter(function (t) { return !etq.off[t.ref]; }), n = sel.length * etq.copies, shown = etqShown();
     var h = '<div class="et-ctrl"><h1>Étiquettes codes-barres des outils</h1>' +
       '<p class="intro" style="margin-top:8px">Cochez les outils dont vous voulez l\'étiquette et choisissez le format : l\'aperçu ci-dessous est prêt à imprimer (papier autocollant ou papier simple à découper). L\'étiquette porte la <b>référence</b>, la désignation et le <b>code à scanner</b>.</p>' +
       '<div class="row" style="justify-content:flex-start;gap:16px;margin:16px 0">' +
         '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Format de l\'étiquette<select id="etsize">' + Object.keys(ETQ_SIZES).map(function (k) { return '<option value="' + k + '"' + (k === etq.size ? " selected" : "") + '>' + ETQ_SIZES[k][0] + '</option>'; }).join("") + '</select></label>' +
         '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Exemplaires par outil<input type="number" id="etcopies" min="1" max="20" value="' + etq.copies + '" style="font:inherit;font-size:16px;height:42px;width:110px;padding:0 10px;border:1px solid #c9cfd8;border-radius:10px"></label>' +
         '<span class="muted" style="align-self:flex-end;font-size:13.5px">Code 128, lu par toutes les douchettes (l\'outil réel propose aussi le QR code)</span></div>' +
-      '<div class="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"><button type="button" class="btn-undo" id="etall">Tout cocher</button><button type="button" class="btn-undo" id="etnone">Tout décocher</button>' +
-        S.tools.map(function (t) { return '<label style="display:inline-flex;gap:5px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-family:var(--font-mono);font-size:13px"><input type="checkbox" data-etref="' + esc(t.ref) + '"' + (etq.off[t.ref] ? "" : " checked") + '>' + esc(t.ref.slice(-4)) + '</label>'; }).join("") + '</div>' +
+      '<div class="row" style="justify-content:flex-start;gap:10px;margin-bottom:10px">' +
+        '<input type="search" id="etq" placeholder="Rechercher un outil, une désignation, un emplacement…" value="' + esc(etq.q) + '" style="font:inherit;font-size:16px;height:42px;flex:1;min-width:220px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px">' +
+        '<select id="etfam"><option value="">Toutes les familles</option>' + Object.keys(familles()).sort().map(function (k) { var n = familles()[k]; return '<option value="' + esc(n) + '"' + (n === etq.fam ? " selected" : "") + '>' + esc(n) + '</option>'; }).join("") + '</select></div>' +
+      '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:10px"><button type="button" class="btn-undo" id="etall">Cocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etnone">Décocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etlow">Seulement les outils sous le seuil</button><button type="button" class="btn-undo" id="etclear">Tout décocher</button></div>' +
+      '<div class="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">' +
+        shown.slice(0, 60).map(function (t) { return '<label style="display:inline-flex;gap:5px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-family:var(--font-mono);font-size:13px"><input type="checkbox" data-etref="' + esc(t.ref) + '"' + (etq.off[t.ref] ? "" : " checked") + '>' + esc(t.ref.length > 9 ? t.ref : t.ref.slice(-4)) + '</label>'; }).join("") +
+        (shown.length > 60 ? '<span class="muted" style="align-self:center;font-size:13.5px">… ' + (shown.length - 60) + ' autres : affinez la recherche ou la famille</span>' : "") + '</div>' +
       '<div class="row" style="justify-content:flex-start;margin-bottom:12px"><button type="button" class="btn-save" id="etprint">🖨 Imprimer</button><span class="muted">' + sel.length + ' outil(s) × ' + etq.copies + ' = ' + n + ' étiquette(s). Imprimez à l\'échelle 100 %.</span></div></div>';
     h += '<style>.et-sheet{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}' +
       '.et-lab{width:' + sz[1] + 'mm;height:' + sz[2] + 'mm;padding:2.5mm;border:.2mm dashed #999;display:flex;flex-direction:column;gap:1mm;overflow:hidden;break-inside:avoid;background:#fff;color:#000}' +
       '.et-lab .r{font-size:' + sz[3] + 'pt;font-weight:700;line-height:1.05;white-space:nowrap;overflow:hidden}.et-lab .d{font-size:' + sz[4] + 'pt;line-height:1.15;max-height:2.4em;overflow:hidden}' +
       '.et-lab .c{flex:1;min-height:0;display:flex;justify-content:center;padding:1mm 3mm}.et-lab .c svg{display:block;width:100%;height:100%}.et-lab .t{font-size:6.5pt;text-align:center;color:#333}' +
-      '@media print{.demo-note,.topbar,.rm-test-strip,.rm-test-wm,.et-ctrl{display:none!important}main{padding:0!important}.et-sheet{border:0;box-shadow:none;padding:0}@page{size:A4;margin:8mm}}</style>' +
-      '<div class="et-sheet">' + sel.map(function (t) {
-        var one = '<div class="et-lab"><div class="r">' + esc(t.ref) + '</div><div class="d">' + esc(t.label) + '</div>' + (t.emplacement ? '<div class="d" style="font-weight:700">📍 ' + esc(t.emplacement) + '</div>' : "") + '<div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div>';
+      '.et-lab.hid{display:none}@media print{.et-lab.hid{display:flex}.et-prevnote{display:none}.demo-note,.topbar,.rm-test-strip,.rm-test-wm,.et-ctrl{display:none!important}main{padding:0!important}.et-sheet{border:0;box-shadow:none;padding:0}@page{size:A4;margin:8mm}}</style>' +
+      (sel.length > 24 ? '<p class="muted et-prevnote" style="margin-bottom:8px">Aperçu des 24 premières étiquettes : l\'impression contient les ' + n + '.</p>' : '') + '<div class="et-sheet">' + sel.map(function (t, ti) {
+        var one = '<div class="et-lab' + (ti >= 24 ? ' hid' : '') + '"><div class="r">' + esc(t.ref) + '</div><div class="d">' + esc(t.label) + '</div>' + (t.emplacement ? '<div class="d" style="font-weight:700">📍 ' + esc(t.emplacement) + '</div>' : "") + '<div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div>';
         return new Array(etq.copies + 1).join(one);
       }).join("") + '</div>';
     return h;
@@ -773,8 +785,13 @@ svg text { font-family: var(--font-body); }
     document.getElementById("etsize").addEventListener("change", function (e) { etq.size = e.target.value; render(); });
     document.getElementById("etcopies").addEventListener("change", function (e) { var c = parseInt(e.target.value, 10); etq.copies = c > 0 ? Math.min(c, 20) : 1; render(); });
     document.querySelectorAll("[data-etref]").forEach(function (c) { c.addEventListener("change", function () { if (c.checked) { delete etq.off[c.getAttribute("data-etref")]; } else { etq.off[c.getAttribute("data-etref")] = 1; } render(); }); });
-    document.getElementById("etall").addEventListener("click", function () { etq.off = {}; render(); });
-    document.getElementById("etnone").addEventListener("click", function () { S.tools.forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
+    document.getElementById("etall").addEventListener("click", function () { etqShown().forEach(function (t) { delete etq.off[t.ref]; }); render(); });
+    document.getElementById("etnone").addEventListener("click", function () { etqShown().forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
+    document.getElementById("etclear").addEventListener("click", function () { S.tools.forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
+    document.getElementById("etlow").addEventListener("click", function () { S.tools.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } }); render(); });
+    document.getElementById("etfam").addEventListener("change", function (e) { etq.fam = e.target.value; render(); });
+    var eq = document.getElementById("etq");
+    eq.addEventListener("input", function (e) { etq.q = e.target.value; var p = eq.selectionStart; render(); var n = document.getElementById("etq"); n.focus(); n.setSelectionRange(p, p); });
     document.getElementById("etprint").addEventListener("click", function () { window.print(); });
   }
 
@@ -1037,11 +1054,38 @@ svg text { font-family: var(--font-body); }
     upd();
   }
 
+  var hist = { q: "", sens: "", days: 0, limit: 200 };
+  function histRows() {
+    var q = hist.q.trim().toLowerCase(), lim = hist.days ? Date.now() - hist.days * 86400000 : 0;
+    return S.moves.filter(function (m) {
+      if (hist.sens === "out" && !(m.qty < 0)) { return false; } if (hist.sens === "in" && !(m.qty > 0)) { return false; }
+      if (lim && new Date(m.t).getTime() < lim) { return false; }
+      return !q || (m.ref + " " + m.label + " " + m.who).toLowerCase().indexOf(q) >= 0;
+    });
+  }
   function vHisto() {
+    var rows = histRows(), sel = function (v, c) { return v === c ? " selected" : ""; };
     return '<h1>Historique des mouvements</h1><p class="intro">Qui, quand, quel outil, combien et pour quelle machine. Les annulations restent visibles.</p>' +
+      '<div class="row" style="justify-content:flex-start;gap:10px">' +
+        '<input type="search" id="hq" placeholder="Outil, machine, OF, personne…" value="' + esc(hist.q) + '" style="font:inherit;font-size:16px;height:42px;flex:1;min-width:220px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px">' +
+        '<select id="hsens"><option value="">Entrées et sorties</option><option value="out"' + sel(hist.sens, "out") + '>Sorties</option><option value="in"' + sel(hist.sens, "in") + '>Entrées</option></select>' +
+        '<select id="hdays"><option value="0">Toute la période</option><option value="7"' + sel(String(hist.days), "7") + '>7 derniers jours</option><option value="30"' + sel(String(hist.days), "30") + '>30 derniers jours</option><option value="90"' + sel(String(hist.days), "90") + '>90 derniers jours</option></select>' +
+        '<button type="button" class="btn-undo" id="hcsv">⬇ Exporter en CSV</button></div>' +
+      '<p class="muted">' + rows.length + ' mouvement(s)' + (rows.length > hist.limit ? ', les ' + hist.limit + ' plus récents affichés' : '') + '</p>' +
       '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
-      S.moves.map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
-      '</tbody></table></div></div>';
+      rows.slice(0, hist.limit).map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
+      (rows.length ? '' : '<tr><td colspan="5" class="muted">Aucun mouvement ne correspond.</td></tr>') +
+      '</tbody></table></div></div>' + (rows.length > hist.limit ? '<p style="text-align:center"><button type="button" class="btn-undo" id="hmore">Afficher 200 de plus</button></p>' : '');
+  }
+  function csvCell(v) { v = String(v == null ? "" : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function csvDownload(rows, name) { download(new Blob(["\ufeff" + rows.map(function (r) { return r.map(csvCell).join(";"); }).join("\r\n")], { type: "text/csv;charset=utf-8" }), name); }
+  function wireHisto() {
+    var q = document.getElementById("hq");
+    q.addEventListener("input", function (e) { hist.q = e.target.value; hist.limit = 200; var p = q.selectionStart; render(); var n = document.getElementById("hq"); n.focus(); n.setSelectionRange(p, p); });
+    document.getElementById("hsens").addEventListener("change", function (e) { hist.sens = e.target.value; hist.limit = 200; render(); });
+    document.getElementById("hdays").addEventListener("change", function (e) { hist.days = parseInt(e.target.value, 10) || 0; hist.limit = 200; render(); });
+    document.getElementById("hcsv").addEventListener("click", function () { csvDownload([["Date", "Qui", "Outil", "Quantité", "Libellé"]].concat(histRows().map(function (m) { return [fmtDate(m.t), m.who, m.ref, m.qty, m.label]; })), "historique_mouvements.csv"); });
+    var more = document.getElementById("hmore"); if (more) { more.addEventListener("click", function () { hist.limit += 200; keepScroll(); }); }
   }
 
   // Même logique que inventaire.php : un écart de stock devient un mouvement « Inventaire », seuil/désiré mis à jour
@@ -1050,7 +1094,7 @@ svg text { font-family: var(--font-body); }
     var h = '<h1>Saisie rapide : stock et seuils</h1>' +
       '<p class="intro">Tapez le <b>stock compté</b> en magasin pour chaque outil, puis réglez le <b>seuil mini</b> et le <b>stock désiré</b>. Laissez « Stock compté » vide pour ne pas toucher au stock ; videz un seuil pour le supprimer. Un seul bouton enregistre tout ; chaque écart de stock est tracé dans l\'historique comme « Inventaire ».</p>';
     if (saisieMsg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow">' + esc(saisieMsg) + '</div></div>'; saisieMsg = null; }
-    h += famDatalist() + '<form id="saisieform" autocomplete="off"><div class="box"><div class="tablewrap"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
+    h += famDatalist() + '<form id="saisieform" autocomplete="off"><p style="margin:0 0 10px"><input type="search" id="sq" placeholder="Filtrer la liste : référence, désignation, famille…" style="font:inherit;font-size:16px;height:42px;width:100%;max-width:460px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px"></p><div class="box"><div class="tablewrap" style="max-height:68vh;overflow:auto"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
       S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) {
         var sv = t.seuil > 0 ? t.seuil : "", dv = t.desired > 0 ? t.desired : "";
         return '<tr><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td>' +
@@ -1062,7 +1106,7 @@ svg text { font-family: var(--font-body); }
           '<td class="num"><input type="number" min="0" step="1" data-f="desired" data-ref="' + esc(t.ref) + '" data-orig="' + dv + '" value="' + dv + '"></td>' +
           '<td class="num"><input type="number" min="0" step="0.01" style="width:100px" data-f="price" data-ref="' + esc(t.ref) + '" data-orig="' + (t.price > 0 ? t.price : "") + '" value="' + (t.price > 0 ? t.price : "") + '"></td></tr>';
       }).join("") +
-      '</tbody></table></div></div><p style="text-align:center;margin:16px 0"><button type="submit" class="btn-save">Enregistrer tout</button></p></form>';
+      '</tbody></table></div></div><div class="savebar"><span id="nchg" class="muted">Aucune modification</span><button type="submit" class="btn-save">Enregistrer tout</button></div></form>';
     return h;
   }
 
@@ -1071,8 +1115,15 @@ svg text { font-family: var(--font-body); }
     form.querySelectorAll("input").forEach(function (el) {
       el.addEventListener("input", function () {
         var orig = el.dataset.orig !== undefined ? el.dataset.orig : "";
-        el.classList.toggle("changed", el.value !== orig);
+        if (el.dataset.f === "counted") { el.classList.toggle("changed", el.value !== ""); } else { el.classList.toggle("changed", el.value !== orig); }
+        var n = form.querySelectorAll("input.changed").length, c = document.getElementById("nchg");
+        c.textContent = n ? n + " modification(s) non enregistrée(s)" : "Aucune modification"; c.style.color = n ? "#8a5a00" : ""; c.style.fontWeight = n ? "600" : "";
       });
+    });
+    var sq = document.getElementById("sq");
+    sq.addEventListener("input", function () {
+      var q = sq.value.trim().toLowerCase();
+      form.querySelectorAll("tbody tr").forEach(function (tr) { var tx = tr.cells[0].textContent + " " + tr.cells[1].textContent + " " + tr.querySelector('[data-f="famille"]').value; tr.style.display = !q || tx.toLowerCase().indexOf(q) >= 0 ? "" : "none"; });
     });
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -1114,13 +1165,17 @@ svg text { font-family: var(--font-body); }
   }
 
   var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
+  var LABELS = { accueil: "Accueil", scan: "Scan entrée / sortie", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)" };
+  var GROUPS = [["Accueil", ["accueil"]], ["Scan entrée / sortie", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
     var v = current(), el = document.getElementById("view");
     cleanStatus();
     el.innerHTML = VIEWS[v]();
-    document.querySelectorAll("nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("data-v") === (v === "of" ? "scan" : v)); });
+    var cv = v === "of" ? "scan" : v, g = GROUPS.filter(function (x) { return x[1].indexOf(cv) >= 0; })[0];
+    document.getElementById("nav").innerHTML = GROUPS.map(function (x) { return '<a href="#' + x[1][0] + '" data-v="' + x[1][0] + '" class="' + (x[1].length > 1 ? "grp" : "") + (x === g ? " on" : "") + '">' + x[0] + '</a>'; }).join("");
+    document.getElementById("subnav").innerHTML = g && g[1].length > 1 ? g[1].map(function (p) { return '<a href="#' + p + '" data-v="' + p + '" class="' + (p === cv ? "on" : "") + '">' + LABELS[p] + '</a>'; }).join("") : "";
     if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
     if (v === "utilisation") { wireUtil(); }
@@ -1129,6 +1184,7 @@ svg text { font-family: var(--font-body); }
     if (v === "excel") { wireXl(); }
     if (v === "supprimer") { wireSup(); }
     if (v === "saisie") { wireSaisie(); }
+    if (v === "historique") { wireHisto(); }
   }
 
   document.getElementById("reset").addEventListener("click", function () {
