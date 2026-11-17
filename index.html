@@ -344,6 +344,12 @@ svg text { font-family: var(--font-body); }
     });
     var under = S.tools.filter(function (t) { return status(t).k === "r"; }).length;
     var restock = sorted().filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
+    // Répartition des outils par état et ruptures en cours (mêmes chiffres que les widgets de l'outil)
+    var cnt = { r: 0, y: 0, g: 0, n: 0 };
+    S.tools.forEach(function (t) { cnt[status(t).k]++; });
+    var open = S.rup.filter(function (r) { return !r.end; }).sort(function (x, y) { return new Date(x.start) - new Date(y.start); });
+    var lim = Date.now() - 90 * 86400000, done = S.rup.filter(function (r) { return r.end && new Date(r.end).getTime() >= lim; });
+    var avg = done.length ? done.reduce(function (a, r) { return a + (new Date(r.end) - new Date(r.start)); }, 0) / done.length : 0;
 
     return '<h1>Accueil</h1>' +
       '<p class="intro">Démonstration de suivi des outils coupants pour un atelier d\'usinage. Chaque sortie ou retour d\'outil est scanné ; le stock et les alertes de seuil se mettent à jour tout seuls. Essayez la page <a href="#scan">Scan</a> : le tableau des seuils change en direct.</p>' +
@@ -367,6 +373,13 @@ svg text { font-family: var(--font-body); }
         '<div class="box"><div class="hd">Outils à réapprovisionner (' + restock.length + ')</div><div class="bd"><ul class="restock">' +
           (restock.length ? restock.map(function (t) { var s = status(t), st = S.status[t.ref]; return '<li><span>' + esc(t.ref) + ' <span class="muted">' + esc(t.label) + '</span>' + (st ? '<br><b style="font-size:13px">' + esc(st.statut) + '</b>' : '') + '</span><span><span class="pill ' + s.k + '">' + s.ic + ' ' + t.stock + ' / ' + t.seuil + '</span></span></li>'; }).join("") : '<li class="muted">Aucun outil sous ou proche du seuil.</li>') +
         '</ul></div></div>' +
+        '<div class="box"><div class="hd">Répartition des outils</div><div class="bd"><a href="#seuils" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:18px;flex-wrap:wrap">' + donut(cnt, S.tools.length) +
+          '<div class="donutleg"><span><span class="pill r">▼ ' + cnt.r + '</span> Sous le seuil</span><span><span class="pill y">▲ ' + cnt.y + '</span> Proche du seuil</span><span><span class="pill g">✓ ' + cnt.g + '</span> OK</span><span><span class="pill n">– ' + cnt.n + '</span> Pas de seuil</span></div></a></div></div>' +
+        '<div class="box"><div class="hd">Ruptures en cours</div><div class="bd"><a href="#ruptures" class="tiles" style="text-decoration:none;color:inherit">' +
+          '<div class="tile"><b>' + (open.length ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + open.length + '</b><span>outil(s) sous le seuil maintenant</span></div>' +
+          '<div class="tile"><b>' + (open.length ? fmtDur(Date.now() - new Date(open[0].start).getTime()) : "—") + '</b><span>' + (open.length ? 'la plus longue : ' + esc(open[0].ref) : 'aucune rupture en cours') + '</span></div>' +
+          '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (90 j)' + (done.length ? ', ' + done.length + ' rupture(s)' : '') + '</span></div>' +
+        '</a></div></div>' +
       '</div>';
   }
 
