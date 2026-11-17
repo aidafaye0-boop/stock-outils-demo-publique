@@ -386,13 +386,25 @@ svg text { font-family: var(--font-body); }
   // À commander en priorité : deux listes (sous le seuil / proches), les plus urgentes d'abord (stock bas par rapport au seuil, puis rupture la plus ancienne).
   // Une ligne par outil ; chaque barre est à l'échelle de son propre outil. 15 lignes visibles, 30 en dépliant ; le reste est dans le tableau détaillé.
   var prioTab = null;
+  function usage30() {   // pièces sorties sur 30 jours par outil (inventaires ignorés, sorties annulées retranchées)
+    var since = new Date(); since.setDate(since.getDate() - 30); since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    var iso = since.toISOString().slice(0, 19), u = {};
+    S.moves.forEach(function (m) {
+      if (m.t < iso) { return; }
+      if (m.qty < 0 && m.label.indexOf("Annulation") !== 0 && m.label.indexOf("Inventaire") !== 0) { u[m.ref] = (u[m.ref] || 0) - m.qty; }
+      if (m.qty > 0 && m.label.indexOf("Annulation sortie") === 0) { u[m.ref] = (u[m.ref] || 0) - m.qty; }
+    });
+    return u;
+  }
+  function isOrdered(ref) { var st = S.status[ref]; return !!st && /^command/i.test(st.statut); }
   function prioCard(list) {
-    var P = { r: [], y: [] };
+    var P = { r: [], y: [] }, U = usage30(), nOrd = { r: 0, y: 0 };
     list.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { P[k].push(t); } });
     ["r", "y"].forEach(function (k) {
       P[k].sort(function (a, b) {
         var ra = a.stock / Math.max(1, a.seuil), rb = b.stock / Math.max(1, b.seuil), oa = openSince(a.ref), ob = openSince(b.ref);
-        return ra - rb || (oa ? new Date(oa.start).getTime() : Infinity) - (ob ? new Date(ob.start).getTime() : Infinity) || (a.ref < b.ref ? -1 : 1);
+        // 1) pas déjà commandé, 2) stock le plus bas par rapport au seuil, 3) le plus utilisé sur 30 jours, 4) rupture la plus ancienne
+        return (isOrdered(a.ref) ? 1 : 0) - (isOrdered(b.ref) ? 1 : 0) || ra - rb || (U[b.ref] || 0) - (U[a.ref] || 0) || (oa ? new Date(oa.start).getTime() : Infinity) - (ob ? new Date(ob.start).getTime() : Infinity) || (a.ref < b.ref ? -1 : 1);
       });
     });
     var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
@@ -401,17 +413,18 @@ svg text { font-family: var(--font-body); }
       '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' +
       '<div class="legend"><span><i style="background:var(--red)"></i>Stock</span><span><i style="background:#111;height:12px;width:3px;vertical-align:-2px"></i>Seuil mini</span><span><i style="background:none;border-top:2px dashed #8a94a3;height:0;vertical-align:3px"></i>Stock désiré</span></div>';
     ["r", "y"].forEach(function (k) {
-      var l = P[k];
+      var l = P[k]; l.forEach(function (t) { if (isOrdered(t.ref)) { nOrd[k]++; } });
       h += '<div class="plist' + (k === tab ? " on" : "") + '" data-plist="' + k + '">' + (l.length ? "" : '<p class="muted">' + (k === "r" ? "Aucun outil sous le seuil." : "Aucun outil proche du seuil.") + '</p>');
-      l.slice(0, 30).forEach(function (t, i) {
+      if (l.length) { h += '<p class="muted" style="margin:0 0 6px;font-size:13px">Les plus urgents d&#39;abord (stock le plus bas par rapport au seuil, puis les plus utilisés sur 30 jours)' + (nOrd[k] ? ' ; <b>' + nOrd[k] + ' déjà commandé(s)</b> en fin de liste' : "") + '.</p>'; }
+      l.slice(0, 12).forEach(function (t, i) {
         var sc = Math.max(t.desired, t.seuil * 1.5, t.stock, 1), tobuy = Math.max(0, t.desired - t.stock), o = openSince(t.ref);
-        h += '<a class="prow' + (i >= 15 ? " more" : "") + '" href="#seuils" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + (t.desired > 0 ? " / désiré " + t.desired : "")) + '">' +
+        h += '<a class="prow' + (i >= 6 ? " more" : "") + '" href="#seuils" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + (t.desired > 0 ? " / désiré " + t.desired : "")) + '">' +
           '<span class="pname"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
           '<span class="pbar"><i class="pfill" style="width:' + Math.min(100, t.stock / sc * 100).toFixed(1) + '%;background:' + col[k] + '"></i><i class="pseuil" style="left:' + (t.seuil / sc * 100).toFixed(1) + '%"></i>' + (t.desired > 0 ? '<i class="pdes" style="left:' + (t.desired / sc * 100).toFixed(1) + '%"></i>' : "") + '</span>' +
           '<span class="pnum"><b' + (t.stock <= 0 ? ' style="color:var(--red)"' : "") + '>' + t.stock + '</b> / ' + t.seuil + '</span>' +
           '<span class="pnote">' + (tobuy > 0 ? 'à commander <b>' + tobuy + '</b>' : "") + (o ? ' · depuis ' + fmtDur(Date.now() - new Date(o.start).getTime()) : "") + (S.status[t.ref] ? ' <span class="pst">' + esc(S.status[t.ref].statut) + '</span>' : "") + '</span></a>';
       });
-      if (l.length > 15) { h += '<p style="margin:8px 0 0"><a href="#" class="pmore">Voir les ' + Math.min(l.length, 30) + ' premiers</a>' + (l.length > 30 ? ' · <span class="muted">' + (l.length - 30) + ' autre(s) dans le tableau détaillé plus bas</span>' : "") + '</p>'; }
+      if (l.length > 6) { h += '<p style="margin:8px 0 0"><a href="#" class="pmore">Voir les ' + Math.min(l.length, 12) + ' premiers</a>' + (l.length > 12 ? ' · <span class="muted">' + (l.length - 12) + ' autre(s) dans le tableau détaillé plus bas</span>' : "") + '</p>'; }
       else if (l.length) { h += '<p class="muted" style="margin:8px 0 0">Les ' + l.length + ' outils sont affichés.</p>'; }
       h += '</div>';
     });
