@@ -381,8 +381,28 @@ svg text { font-family: var(--font-body); }
           '<div class="tile"><b>' + (open.length ? fmtDur(Date.now() - new Date(open[0].start).getTime()) : "—") + '</b><span>' + (open.length ? 'la plus longue : ' + esc(open[0].ref) : 'aucune rupture en cours') + '</span></div>' +
           '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (90 j)' + (done.length ? ', ' + done.length + ' rupture(s)' : '') + '</span></div>' +
         '</a></div></div>' +
+        '<div class="box"><div class="hd">Suivi du réapprovisionnement</div><div class="bd">' + suiviWidget() + '</div></div>' +
       '</div>';
   }
+  function suiviWidget() {
+    var al = S.tools.filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
+    if (!al.length) { return '<div style="color:var(--green);padding:6px 2px">✓ Aucun outil à réapprovisionner</div>'; }
+    var nos = 0, tr = {}, budget = 0, np = 0;
+    al.forEach(function (t) {
+      var st = S.status[t.ref];
+      if (st) { tr[st.statut] = (tr[st.statut] || 0) + 1; } else if (status(t).k === "r") { nos++; }
+      var q = Math.max(0, t.desired - t.stock); if (q > 0) { if (t.price > 0) { budget += q * t.price; } else { np++; } }
+    });
+    var tile = function (n, label, color, key) { return '<a href="#seuils" data-sfgo="' + esc(key) + '" title="Voir ces outils dans le tableau des seuils" style="text-decoration:none;color:inherit"><div class="tile" style="height:100%;box-sizing:border-box"><b style="color:' + color + '">' + n + '</b><span>' + label + '</span></div></a>'; };
+    return '<div class="tiles">' + tile(nos, '▼ sous le seuil, <strong>sans suivi</strong>', nos ? "var(--red)" : "var(--green)", "__none") +
+      STATUTS.map(function (n) { return tile(tr[n] || 0, esc(n), "inherit", n); }).join("") + '</div>' +
+      '<div class="tile" style="margin-top:8px;background:#e8f0fb" title="Quantité à commander x prix unitaire, pour les outils sous ou proches du seuil"><b style="font-size:24px">' + fmtEur(budget) + '</b><span>budget de réapprovisionnement estimé' + (np ? ' · ' + np + ' outil(s) sans prix non comptés' : '') + '</span></div>';
+  }
+  document.addEventListener("click", function (e) {   // tuile du widget : ouvre le tableau des seuils déjà filtré sur ces outils
+    var a = e.target.closest ? e.target.closest("[data-sfgo]") : null; if (!a) { return; }
+    sf.suivi = a.getAttribute("data-sfgo");
+    setTimeout(function () { var d = document.getElementById("sfdetail"); if (d) { d.scrollIntoView({ behavior: "smooth" }); } }, 120);
+  });
 
   function donut(counts, total) {
     var R = 58, C = 2 * Math.PI * R, off = 0, segs = "";
