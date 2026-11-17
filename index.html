@@ -336,6 +336,8 @@ svg text { font-family: var(--font-body); }
   }
 
   /* ---------- Vues ---------- */
+  function clockTxt() { var n = new Date(); return { h: n.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), d: n.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) }; }
+  setInterval(function () { var h = document.getElementById("clockh"), d = document.getElementById("clockd"); if (h && d) { var c = clockTxt(); h.textContent = c.h; d.textContent = c.d; } }, 20000);
   function vAccueil() {
     var today = nowIso().slice(0, 10), out = 0, inn = 0;
     S.moves.forEach(function (m) {
@@ -364,6 +366,7 @@ svg text { font-family: var(--font-body); }
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
         '</div></div></div>' +
         '<div class="box"><div class="hd">Aujourd\'hui</div><div class="bd"><div class="tiles">' +
+          '<div class="tile"><b id="clockh">' + clockTxt().h + '</b><span id="clockd">' + clockTxt().d + '</span></div>' +
           '<div class="tile"><b>' + out + '</b><span>outil(s) sorti(s)</span></div>' +
           '<div class="tile"><b>' + inn + '</b><span>outil(s) entré(s)</span></div>' +
           '<a class="tile" href="#seuils" style="text-decoration:none;color:inherit"><b>' + (under ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + under + '</b><span>sous le seuil</span></a>' +
