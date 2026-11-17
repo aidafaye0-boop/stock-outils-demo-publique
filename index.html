@@ -336,7 +336,7 @@ svg text { font-family: var(--font-body); }
   }
 
   /* ---------- Vues ---------- */
-  function clockTxt() { var n = new Date(); return { h: n.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), d: n.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }) }; }
+  function clockTxt() { var n = new Date(); return { h: n.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), d: n.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) }; }
   setInterval(function () { var h = document.getElementById("clockh"), d = document.getElementById("clockd"); if (h && d) { var c = clockTxt(); h.textContent = c.h; d.textContent = c.d; } }, 20000);
   function vAccueil() {
     var today = nowIso().slice(0, 10), out = 0, inn = 0;
@@ -366,7 +366,6 @@ svg text { font-family: var(--font-body); }
           '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
         '</div></div></div>' +
         '<div class="box"><div class="hd">Aujourd\'hui</div><div class="bd"><div class="tiles">' +
-          '<div class="tile"><b id="clockh">' + clockTxt().h + '</b><span id="clockd">' + clockTxt().d + '</span></div>' +
           '<div class="tile"><b>' + out + '</b><span>outil(s) sorti(s)</span></div>' +
           '<div class="tile"><b>' + inn + '</b><span>outil(s) entré(s)</span></div>' +
           '<a class="tile" href="#seuils" style="text-decoration:none;color:inherit"><b>' + (under ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + under + '</b><span>sous le seuil</span></a>' +
@@ -376,6 +375,7 @@ svg text { font-family: var(--font-body); }
         '</ul></div></div>' +
         '<div class="box"><div class="hd">Répartition des outils</div><div class="bd"><a href="#seuils" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:18px;flex-wrap:wrap">' + donut(cnt, S.tools.length) +
           '<div class="donutleg"><span><span class="pill r">▼ ' + cnt.r + '</span> Sous le seuil</span><span><span class="pill y">▲ ' + cnt.y + '</span> Proche du seuil</span><span><span class="pill g">✓ ' + cnt.g + '</span> OK</span><span><span class="pill n">– ' + cnt.n + '</span> Pas de seuil</span></div></a></div></div>' +
+        '<div class="box"><div class="hd">Date et heure</div><div class="bd" style="text-align:center;padding:14px 8px"><div id="clockh" style="font-size:44px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums">' + clockTxt().h + '</div><div id="clockd" style="font-size:16px;color:var(--muted);margin-top:4px">' + clockTxt().d + '</div></div></div>' +
         '<div class="box"><div class="hd">Ruptures en cours</div><div class="bd"><a href="#ruptures" class="tiles" style="text-decoration:none;color:inherit">' +
           '<div class="tile"><b>' + (open.length ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + open.length + '</b><span>outil(s) sous le seuil maintenant</span></div>' +
           '<div class="tile"><b>' + (open.length ? fmtDur(Date.now() - new Date(open[0].start).getTime()) : "—") + '</b><span>' + (open.length ? 'la plus longue : ' + esc(open[0].ref) : 'aucune rupture en cours') + '</span></div>' +
