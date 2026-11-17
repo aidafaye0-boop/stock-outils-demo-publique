@@ -278,7 +278,7 @@ svg text { font-family: var(--font-body); }
   }
   // Un outil revenu au-dessus de son seuil n'a plus de suivi de commande (comme rmeca_clean_statuts du module)
   function cleanStatus() {
-    Object.keys(S.status).forEach(function (ref) { var t = tool(ref); if (!t || t.seuil <= 0 || t.stock >= t.seuil) { delete S.status[ref]; } });
+    Object.keys(S.status).forEach(function (ref) { var t = tool(ref); if (!t || t.seuil <= 0 || t.stock > t.seuil * 1.5) { delete S.status[ref]; } });
     syncRup();
   }
   // Ouvre une période quand un outil passe sous son seuil, la ferme quand il remonte ; moins de 10 min = correction, supprimée
