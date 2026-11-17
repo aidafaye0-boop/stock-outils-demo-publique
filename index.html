@@ -337,10 +337,9 @@ svg text { font-family: var(--font-body); }
 
   /* ---------- Vues ---------- */
   function vAccueil() {
-    var today = nowIso().slice(0, 10), out = 0, inn = 0, nomach = 0;
+    var today = nowIso().slice(0, 10), out = 0, inn = 0;
     S.moves.forEach(function (m) {
       if (m.t.slice(0, 10) === today) { if (m.qty < 0) { out -= m.qty; } else { inn += m.qty; } }
-      if (m.qty < 0 && m.label.indexOf("Machine : ") < 0 && m.t.slice(0, 10) === today) { nomach++; }
     });
     var under = S.tools.filter(function (t) { return status(t).k === "r"; }).length;
     var restock = sorted().filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
@@ -368,7 +367,6 @@ svg text { font-family: var(--font-body); }
           '<div class="tile"><b>' + out + '</b><span>outil(s) sorti(s)</span></div>' +
           '<div class="tile"><b>' + inn + '</b><span>outil(s) entré(s)</span></div>' +
           '<a class="tile" href="#seuils" style="text-decoration:none;color:inherit"><b>' + (under ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + under + '</b><span>sous le seuil</span></a>' +
-          '<div class="tile"><b>' + (nomach ? '<span style="color:var(--yellow)">▲</span> ' : '') + nomach + '</b><span>sortie(s) sans machine</span></div>' +
         '</div></div></div>' +
         '<div class="box"><div class="hd">Outils à réapprovisionner (' + restock.length + ')</div><div class="bd"><ul class="restock">' +
           (restock.length ? restock.map(function (t) { var s = status(t), st = S.status[t.ref]; return '<li><span>' + esc(t.ref) + ' <span class="muted">' + esc(t.label) + '</span>' + (st ? '<br><b style="font-size:13px">' + esc(st.statut) + '</b>' : '') + '</span><span><span class="pill ' + s.k + '">' + s.ic + ' ' + t.stock + ' / ' + t.seuil + '</span></span></li>'; }).join("") : '<li class="muted">Aucun outil sous ou proche du seuil.</li>') +
