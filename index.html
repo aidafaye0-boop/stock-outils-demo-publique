@@ -20,6 +20,7 @@
   --navy-soft: #e7ecf3;
   --red: #d03b3b;
   --red-btn: #b8322f;
+  --out-btn: #1f66c2;
   --yellow: #fab219;
   --green: #0ca30c;
   --green-btn: #1f7a1f;
@@ -90,15 +91,15 @@ a:hover { color: #174a8c; }
 .banner.warn { background: #fff6e0; border-left: 8px solid var(--yellow); }
 .btn-undo { background: #fff; border: 1px solid #999; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
 .zone { border: 3px dashed #b9b9b4; border-radius: 18px; box-shadow: var(--shadow); padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; background: var(--surface); }
-.zone.out { border-color: var(--red-btn); background: #fdf4f4; }
+.zone.out { border-color: var(--out-btn); background: #f3f7fd; }
 .zone.in { border-color: var(--green-btn); background: #f2faf2; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .sens button { font: inherit; font-weight: 600; padding: 9px 18px; border: 2px solid #bbb; border-radius: 10px; background: #fff; cursor: pointer; color: var(--ink); }
-.sens button.on.o { background: var(--red-btn); border-color: var(--red-btn); color: #fff; }
+.sens button.on.o { background: var(--out-btn); border-color: var(--out-btn); color: #fff; }
 .sens button.on.i { background: var(--green-btn); border-color: var(--green-btn); color: #fff; }
 select { font: inherit; font-size: 16px; height: 42px; min-width: 190px; padding: 0 10px; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); }
 .state { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--out-btn); }
 .zone.in .dot { background: var(--green); }
 .code { font: inherit; font-size: 22px; padding: 10px 14px; width: 100%; max-width: 420px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(23,32,44,.05); background: #fff; color: var(--ink); }
 .try { display: flex; flex-direction: column; gap: 8px; align-items: center; }
@@ -605,7 +606,7 @@ svg text { font-family: var(--font-body); }
             '<td style="text-align:center"><button type="button" data-ofrm="' + esc(l.ref) + '" title="Retirer de la liste" aria-label="Retirer ' + esc(l.ref) + '" style="background:none;border:0;cursor:pointer;font-size:18px;opacity:.6">✕</button></td></tr>';
         }).join("") + '</tbody></table></div></div>' +
         '<div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="btn-undo" id="ofclear">Vider la liste</button>' +
-        '<button type="button" class="btn-save" id="ofvalidate" style="background:' + (out ? "var(--red-btn)" : "var(--green-btn)") + '">✔ Valider : ' + (out ? "sortie" : "entrée") + ' de ' + pieces + ' pièce(s)</button></div>';
+        '<button type="button" class="btn-save" id="ofvalidate" style="background:' + (out ? "var(--out-btn)" : "var(--green-btn)") + '">✔ Valider : ' + (out ? "sortie" : "entrée") + ' de ' + pieces + ' pièce(s)</button></div>';
     }
     h += '</form>';
     h += '<div class="box"><div class="hd">Derniers mouvements</div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
