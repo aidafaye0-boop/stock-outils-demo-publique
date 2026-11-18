@@ -442,9 +442,20 @@ svg text { font-family: var(--font-body); }
       });
     });
     var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
+    // Histogramme des 15 outils les plus tendus : le plus loin sous le stock de sécurité (seuil mini − stock, en pièces)
+    var T = list.filter(function (t) { return t.seuil > 0 && t.stock < t.seuil; }).sort(function (a, b) { return (b.seuil - b.stock) - (a.seuil - a.stock) || (a.ref < b.ref ? -1 : 1); }).slice(0, 15);
+    var gmax = T.reduce(function (m, t) { return Math.max(m, t.seuil - t.stock); }, 1);
+    var histo = '<div style="margin:0 0 16px"><b>Les ' + (T.length < 15 ? T.length + " " : "15 ") + 'outils les plus tendus</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Écart au stock de sécurité = seuil mini − stock, en pièces : plus la barre est longue, plus l&#39;outil est loin de son seuil.</p>' +
+      (T.length ? T.map(function (t) {
+        var gap = t.seuil - t.stock;
+        return '<a href="#seuils" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap) + '" style="display:flex;align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
+          '<span style="flex:0 0 38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
+          '<span style="flex:1 1 auto;height:14px;background:rgba(138,138,134,.15);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:' + (gap / gmax * 100).toFixed(1) + '%;background:var(--red)"></i></span>' +
+          '<span style="flex:0 0 auto;min-width:92px;text-align:right;font-size:13px"><b style="color:var(--red)">−' + gap + '</b> <span class="muted">(' + t.stock + ' / ' + t.seuil + ')</span></span></a>';
+      }).join("") : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') + '</div>';
     var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
+      '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' + histo +
       '<div class="ptabs"><button type="button" class="ptab r' + (tab === "r" ? " on" : "") + '" data-ptab="r"><b>' + P.r.length + '</b>▼ sous le seuil</button><button type="button" class="ptab y' + (tab === "y" ? " on" : "") + '" data-ptab="y"><b>' + P.y.length + '</b>▲ proches du seuil</button></div>' +
-      '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' +
       '<div class="legend"><span><i style="background:var(--red)"></i>Stock</span><span><i style="background:#111;height:12px;width:3px;vertical-align:-2px"></i>Seuil mini</span><span><i style="background:none;border-top:2px dashed #8a94a3;height:0;vertical-align:3px"></i>Stock désiré</span></div>';
     ["r", "y"].forEach(function (k) {
       var l = P[k]; l.forEach(function (t) { if (isOrdered(t.ref)) { nOrd[k]++; } });
