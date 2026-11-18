@@ -455,25 +455,8 @@ svg text { font-family: var(--font-body); }
       }).join("") : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') + '</div>';
     var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
       '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' + histo +
-      '<div class="ptabs"><button type="button" class="ptab r' + (tab === "r" ? " on" : "") + '" data-ptab="r"><b>' + P.r.length + '</b>▼ sous le seuil</button><button type="button" class="ptab y' + (tab === "y" ? " on" : "") + '" data-ptab="y"><b>' + P.y.length + '</b>▲ proches du seuil</button></div>' +
-      '<div class="legend"><span><i style="background:var(--red)"></i>Stock</span><span><i style="background:#111;height:12px;width:3px;vertical-align:-2px"></i>Seuil mini</span><span><i style="background:none;border-top:2px dashed #8a94a3;height:0;vertical-align:3px"></i>Stock désiré</span></div>';
-    ["r", "y"].forEach(function (k) {
-      var l = P[k]; l.forEach(function (t) { if (isOrdered(t.ref)) { nOrd[k]++; } });
-      h += '<div class="plist' + (k === tab ? " on" : "") + '" data-plist="' + k + '">' + (l.length ? "" : '<p class="muted">' + (k === "r" ? "Aucun outil sous le seuil." : "Aucun outil proche du seuil.") + '</p>');
-      if (l.length) { h += '<p class="muted" style="margin:0 0 6px;font-size:13px">Les plus urgents d&#39;abord (stock le plus bas par rapport au seuil, puis les plus utilisés sur 30 jours)' + (nOrd[k] ? ' ; <b>' + nOrd[k] + ' déjà commandé(s)</b> en fin de liste' : "") + '.</p>'; }
-      l.slice(0, 12).forEach(function (t, i) {
-        var sc = Math.max(t.desired, t.seuil * 1.5, t.stock, 1), tobuy = Math.max(0, t.desired - t.stock), o = openSince(t.ref);
-        h += '<a class="prow' + (i >= 6 ? " more" : "") + '" href="#seuils" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + (t.desired > 0 ? " / désiré " + t.desired : "")) + '">' +
-          '<span class="pname"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
-          '<span class="pbar"><i class="pfill" style="width:' + Math.min(100, t.stock / sc * 100).toFixed(1) + '%;background:' + col[k] + '"></i><i class="pseuil" style="left:' + (t.seuil / sc * 100).toFixed(1) + '%"></i>' + (t.desired > 0 ? '<i class="pdes" style="left:' + (t.desired / sc * 100).toFixed(1) + '%"></i>' : "") + '</span>' +
-          '<span class="pnum"><b' + (t.stock <= 0 ? ' style="color:var(--red)"' : "") + '>' + t.stock + '</b> / ' + t.seuil + '</span>' +
-          '<span class="pnote">' + (tobuy > 0 ? 'à commander <b>' + tobuy + '</b>' : "") + (o ? ' · depuis ' + fmtDur(Date.now() - new Date(o.start).getTime()) : "") + (S.status[t.ref] ? ' <span class="pst">' + esc(S.status[t.ref].statut) + '</span>' : "") + '</span></a>';
-      });
-      if (l.length > 6) { h += '<p style="margin:8px 0 0"><a href="#" class="pmore">Voir les ' + Math.min(l.length, 12) + ' premiers</a>' + (l.length > 12 ? ' · <span class="muted">' + (l.length - 12) + ' autre(s) dans le tableau détaillé plus bas</span>' : "") + '</p>'; }
-      else if (l.length) { h += '<p class="muted" style="margin:8px 0 0">Les ' + l.length + ' outils sont affichés.</p>'; }
-      h += '</div>';
-    });
-    return h + '</div></div>';
+      '<p style="margin:0"><b style="color:var(--red)">' + P.r.length + '</b> ▼ sous le seuil · <b style="color:#b87f00">' + P.y.length + '</b> ▲ proches du seuil · <span class="muted">détail dans le tableau plus bas</span></p></div></div>';
+    return h;
   }
   function famBars(list) {
     var fb = {}, names = [];
