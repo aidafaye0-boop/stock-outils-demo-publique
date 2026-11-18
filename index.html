@@ -810,7 +810,8 @@ svg text { font-family: var(--font-body); }
   }
 
   /* ---------- Étiquettes codes-barres (comme etiquettes.php) ---------- */
-  var ETQ_SIZES = { g: ["Grande : 100 × 50 mm", 100, 50, 20, 11], m: ["Moyenne : 70 × 35 mm (recommandé)", 70, 35, 14, 8.5], p: ["Petite : 50 × 25 mm", 50, 25, 10, 7] };
+  var RM_LOGO = "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20262%2098%22%3E%3Crect%20width%3D%22262%22%20height%3D%2298%22%20fill%3D%22%23fff%22/%3E%3Ctext%20x%3D%22131%22%20y%3D%2252%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%22%20font-weight%3D%22700%22%20font-size%3D%2240%22%20fill%3D%22%23263c5c%22%3Evotre-logo%3C/text%3E%3Ctext%20x%3D%22131%22%20y%3D%2282%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%22%20font-size%3D%2222%22%20fill%3D%22%23263c5c%22%3EATELIER%3C/text%3E%3C/svg%3E";
+  var ETQ_SIZES = { g: ["Grande : 100 × 56 mm", 100, 56], m: ["Moyenne : 70 × 39 mm (recommandé)", 70, 39], p: ["Petite : 50 × 28 mm", 50, 28] };
   var etq = { off: {}, copies: 1, size: "m", q: "", fam: "", focus: "" };
   function etqShown() { var q = etq.q.trim().toLowerCase(); return S.tools.filter(function (t) { return (!etq.fam || (t.famille || "") === etq.fam) && (!q || (t.ref + " " + t.label + " " + (t.emplacement || "")).toLowerCase().indexOf(q) >= 0); }); }
   function vEtiq() {
@@ -830,12 +831,17 @@ svg text { font-family: var(--font-body); }
         (shown.length > 60 ? '<span class="muted" style="align-self:center;font-size:13.5px">… ' + (shown.length - 60) + ' autres : affinez la recherche ou la famille</span>' : "") + '</div>' +
       '<div class="row" style="justify-content:flex-start;margin-bottom:12px"><button type="button" class="btn-save" id="etprint">🖨 Imprimer</button><span class="muted">' + sel.length + ' outil(s) × ' + etq.copies + ' = ' + n + ' étiquette(s). Imprimez à l\'échelle 100 %.</span></div></div>';
     h += '<style>.et-sheet{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}' +
-      '.et-lab{width:' + sz[1] + 'mm;height:' + sz[2] + 'mm;padding:2.5mm;border:.2mm dashed #999;display:flex;flex-direction:column;gap:1mm;overflow:hidden;break-inside:avoid;background:#fff;color:#000}' +
-      '.et-lab .r{font-size:' + sz[3] + 'pt;font-weight:700;line-height:1.05;white-space:nowrap;overflow:hidden}.et-lab .d{font-size:' + sz[4] + 'pt;line-height:1.15;max-height:2.4em;overflow:hidden}' +
-      '.et-lab .c{flex:1;min-height:0;display:flex;justify-content:center;padding:1mm 3mm}.et-lab .c svg{display:block;width:100%;height:100%}.et-lab .t{font-size:6.5pt;text-align:center;color:#333}' +
+      '.et-lab{width:' + sz[1] + 'mm;height:' + sz[2] + 'mm;border:.2mm dashed #999;display:grid;grid-template-columns:1fr 27%;grid-template-rows:27% 1fr 15% 9%;overflow:hidden;break-inside:avoid;background:#156082;color:#fff;font-size:' + (sz[1] / 10) + 'pt;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif}' +
+      '.et-lab .lg{grid-column:1;grid-row:1;margin:4% 0 0 4%;background:#fff;display:flex;align-items:center;justify-content:center;width:50%}.et-lab .lg img{display:block;width:100%;height:100%;object-fit:contain}' +
+      '.et-lab .em{grid-column:2;grid-row:1;border:.2mm solid #0b2f40;display:flex;flex-direction:column}.et-lab .em .t{font-size:.95em;text-align:center;border-bottom:.2mm solid #0b2f40;padding:.15em 0;line-height:1.1}' +
+      '.et-lab .em .v{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:2.2em;font-weight:700;line-height:1.05;overflow:hidden;padding:0 .2em;word-break:break-word}.et-lab .em .v.m{font-size:1.45em}.et-lab .em .v.s{font-size:1.05em}' +
+      '.et-lab .bcp{grid-column:1/3;grid-row:2;justify-self:center;align-self:center;width:58%;height:88%;background:#fff;color:#000;display:flex;flex-direction:column;padding:.4em .6em .2em;min-height:0}' +
+      '.et-lab .bcp .c{flex:1;min-height:0;display:flex;justify-content:center}.et-lab .bcp .c svg{display:block;width:100%;height:100%}.et-lab .bcp .t{font-size:1.05em;text-align:center;line-height:1.2;padding-top:.15em}' +
+      '.et-lab .nm{grid-column:1/3;grid-row:3;justify-self:center;align-self:center;width:84%;border:.2mm solid #0b2f40;text-align:center;font-size:1.05em;padding:.15em .4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}' +
+      '.et-lab .mn{grid-column:1/3;grid-row:4;text-align:center;font-weight:700;font-size:1.05em;line-height:1}' +
       '.et-lab.hid{display:none}@media print{.et-lab.hid{display:flex}.et-prevnote{display:none}.demo-note,.topbar,.rm-test-strip,.rm-test-wm,.et-ctrl{display:none!important}main{padding:0!important}.et-sheet{border:0;box-shadow:none;padding:0}@page{size:A4;margin:8mm}}</style>' +
       (sel.length > 24 ? '<p class="muted et-prevnote" style="margin-bottom:8px">Aperçu des 24 premières étiquettes : l\'impression contient les ' + n + '.</p>' : '') + '<div class="et-sheet">' + sel.map(function (t, ti) {
-        var one = '<div class="et-lab' + (ti >= 24 ? ' hid' : '') + '"><div class="r">' + esc(t.ref) + '</div><div class="d">' + esc(t.label) + '</div>' + (t.emplacement ? '<div class="d" style="font-weight:700">📍 ' + esc(t.emplacement) + '</div>' : "") + '<div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div>';
+        var emp = (t.emplacement || "").trim(), vc = emp.length > 11 ? " s" : (emp.length > 5 ? " m" : ""); var one = '<div class="et-lab' + (ti >= 24 ? ' hid' : '') + '"><div class="lg"><img src="' + RM_LOGO + '" alt="Logo"></div><div class="em"><div class="t">Emplacement</div><div class="v' + vc + '">' + (emp ? esc(emp) : "&nbsp;") + '</div></div><div class="bcp"><div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div><div class="nm">' + esc(t.label || t.ref) + '</div><div class="mn">' + (t.seuil > 0 ? "Stock mini : " + t.seuil : "") + '</div></div>';
         return new Array(etq.copies + 1).join(one);
       }).join("") + '</div>';
     return h;
