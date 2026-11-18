@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -1021,11 +1021,11 @@ svg text { font-family: var(--font-body); }
     if (pl) {
       var c = pl.counts, pill = { create: ["Nouveau", "#1f7a1f"], update: ["Mis à jour", "#2a78d6"], same: ["Inchangé", "#8a8a86"], error: ["Erreur", "#d03b3b"] };
       h += '<div class="box"><div class="hd">Aperçu de l\'import : ' + esc(xlState.name) + '</div><div class="bd"><div class="tiles" style="margin-bottom:14px"><div class="tile"><b style="color:#1f7a1f">' + c.create + '</b><span>nouveau(x)</span></div><div class="tile"><b style="color:#2a78d6">' + c.update + '</b><span>mis à jour</span></div><div class="tile"><b>' + c.same + '</b><span>inchangé(s)</span></div><div class="tile"><b style="color:' + (c.error ? "var(--red)" : "inherit") + '">' + c.error + '</b><span>erreur(s)</span></div></div>' +
+        (c.error ? '<p style="margin:4px 0 12px"><b>Rien ne sera importé tant qu\'il y a des erreurs.</b> Corrigez le fichier puis renvoyez-le.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
+          : (c.create + c.update === 0 ? '<p style="margin:4px 0 12px">Le fichier ne change rien : tout est déjà à jour.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
+          : '<div class="row" style="justify-content:flex-start;margin:4px 0 16px"><button type="button" class="btn-save" id="xlconfirm" style="background:var(--green-btn)">✔ Confirmer l\'import</button><button type="button" class="btn-undo" id="xlclose">Annuler</button></div>')) +
         '<div class="tablewrap"><table><thead><tr><th>Ligne</th><th>Référence</th><th>Action</th><th>Détail</th></tr></thead><tbody>' +
-        pl.items.map(function (it) { var p = pill[it.action]; return '<tr><td>' + it.line + '</td><td><b>' + esc(it.ref) + '</b></td><td><span class="pill" style="background:' + p[1] + '">' + p[0] + '</span></td><td style="white-space:normal">' + (it.action === "error" ? '<span style="color:var(--red)">' + esc(it.error) + '</span>' : esc(it.changes.join(" ; "))) + '</td></tr>'; }).join("") + '</tbody></table></div>' +
-        (c.error ? '<p style="margin-top:14px"><b>Rien ne sera importé tant qu\'il y a des erreurs.</b> Corrigez le fichier puis renvoyez-le.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
-          : (c.create + c.update === 0 ? '<p style="margin-top:14px">Le fichier ne change rien : tout est déjà à jour.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
-          : '<div class="row" style="justify-content:flex-start;margin-top:16px"><button type="button" class="btn-save" id="xlconfirm" style="background:var(--green-btn)">✔ Confirmer l\'import</button><button type="button" class="btn-undo" id="xlclose">Annuler</button></div>')) + '</div></div>';
+        pl.items.map(function (it) { var p = pill[it.action]; return '<tr><td>' + it.line + '</td><td><b>' + esc(it.ref) + '</b></td><td><span class="pill" style="background:' + p[1] + '">' + p[0] + '</span></td><td style="white-space:normal">' + (it.action === "error" ? '<span style="color:var(--red)">' + esc(it.error) + '</span>' : esc(it.changes.join(" ; "))) + '</td></tr>'; }).join("") + '</tbody></table></div>' + '</div></div>';
     }
     h += '<div class="box"><div class="hd">Importer des outils depuis Excel</div><div class="bd"><p class="muted" style="margin-bottom:12px">Choisissez un fichier <b>.xlsx</b> (ou .csv) au format de l\'export. Un outil dont la référence existe est mis à jour, une référence inconnue crée un nouvel outil. <b>Une cellule vide ne change rien</b>, et rien n\'est jamais supprimé. Un stock différent est enregistré comme un mouvement « Inventaire » dans l\'historique. Vous verrez un aperçu avant que quoi que ce soit soit enregistré.</p>' +
       '<input type="file" id="xlfile" accept=".xlsx,.csv"></div></div>';
