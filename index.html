@@ -443,17 +443,25 @@ svg text { font-family: var(--font-body); }
       });
     });
     var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
-    // Histogramme des 15 outils les plus tendus : le plus loin sous le stock de sécurité (seuil mini − stock, en pièces)
-    var T = list.filter(function (t) { return t.seuil > 0 && t.stock < t.seuil; }).sort(function (a, b) { return (b.seuil - b.stock) - (a.seuil - a.stock) || (a.ref < b.ref ? -1 : 1); }).slice(0, 15);
-    var gmax = T.reduce(function (m, t) { return Math.max(m, t.seuil - t.stock); }, 1);
-    var histo = '<div style="margin:0 0 16px"><b>Les ' + (T.length < 15 ? T.length + " " : "15 ") + 'outils les plus tendus</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Écart au stock de sécurité = seuil mini − stock, en pièces : plus la barre est longue, plus l&#39;outil est loin de son seuil.</p>' +
-      (T.length ? T.map(function (t) {
-        var gap = t.seuil - t.stock;
-        return '<a href="#seuils" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap) + '" style="display:flex;align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
+    // Outils sous le seuil, TOUS, dans l'ordre de priorité ci-dessus (v1.18.0) : 15 visibles, les autres en dépliant.
+    // Avant : « les 15 plus tendus » triés par écart en pièces seulement (beaucoup d'ex aequo, classés par référence).
+    var T = P.r, NF = 15;
+    var pkey = function (t) { var o = openSince(t.ref); return (isOrdered(t.ref) ? 1 : 0) + "|" + (t.stock / Math.max(1, t.seuil)).toFixed(4) + "|" + (U[t.ref] || 0) + "|" + (o ? o.start : ""); };
+    var ties = T.length > NF ? T.filter(function (t) { return pkey(t) === pkey(T[NF - 1]); }).length : 0;
+    var histo = '<div style="margin:0 0 16px"><b>' + (T.length ? T.length + " outil" + (T.length > 1 ? "s" : "") + " sous le seuil — les plus urgents d&#39;abord" : "Outils sous le seuil") + '</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Ordre : pas encore commandés d&#39;abord, puis le stock le plus bas par rapport au seuil, puis les plus utilisés sur 30 jours, puis la rupture la plus ancienne. Barre = part du stock de sécurité qui manque.</p>' +
+      (T.length ? T.map(function (t, i) {
+        var gap = t.seuil - t.stock, o = openSince(t.ref), st = S.status[t.ref] ? S.status[t.ref].statut : "", meta = [];
+        if (U[t.ref]) { meta.push(U[t.ref] + " sortie" + (U[t.ref] > 1 ? "s" : "") + "/30 j"); }
+        if (o) { meta.push("depuis " + fmtDur(Date.now() - new Date(o.start).getTime())); }
+        return '<a href="#seuils" class="' + (i >= NF ? "tl-more" : "") + '" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap + (meta.length ? " · " + meta.join(" · ") : "") + (st ? " · suivi : " + st : "")) + '" style="display:' + (i >= NF ? "none" : "flex") + ';align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
+          '<span class="muted" style="flex:0 0 2.4em;text-align:right">' + (i + 1) + '</span>' +
           '<span style="flex:0 0 38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
-          '<span style="flex:1 1 auto;height:14px;background:rgba(138,138,134,.15);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:' + (gap / gmax * 100).toFixed(1) + '%;background:var(--red)"></i></span>' +
-          '<span style="flex:0 0 auto;min-width:92px;text-align:right;font-size:13px"><b style="color:var(--red)">−' + gap + '</b> <span class="muted">(' + t.stock + ' / ' + t.seuil + ')</span></span></a>';
-      }).join("") : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') + '</div>';
+          '<span style="flex:1 1 auto;height:14px;background:rgba(138,138,134,.15);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:' + (Math.min(1, gap / Math.max(1, t.seuil)) * 100).toFixed(1) + '%;background:var(--red)"></i></span>' +
+          '<span style="flex:0 0 auto;min-width:92px;text-align:right;font-size:13px"><b style="color:var(--red)">−' + gap + '</b> <span class="muted">(' + t.stock + ' / ' + t.seuil + ')</span>' +
+          (meta.length || st ? '<br><span class="muted" style="font-size:12px">' + esc(meta.join(" · ")) + '</span>' + (st ? ' <b style="color:#1a4f8f">' + esc(st) + '</b>' : '') : '') + '</span></a>';
+      }).join("") : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') +
+      (ties > 1 ? '<p class="muted" style="margin:6px 0 0;font-size:13px">ⓘ ' + ties + ' outils sont à égalité (même stock par rapport au seuil, même consommation, même début de rupture) : ils sont affichés par référence. Le classement se précisera avec les sorties enregistrées.</p>' : '') +
+      (T.length > NF ? '<p style="margin:8px 0 0;text-align:center"><button type="button" class="btn-undo" id="tlmore" data-more="Afficher les ' + (T.length - NF) + ' autres" data-less="Réduire aux ' + NF + ' premiers">Afficher les ' + (T.length - NF) + ' autres</button></p>' : '') + '</div>';
     var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
       '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' + histo +
       '<p style="margin:0"><b style="color:var(--red)">' + P.r.length + '</b> ▼ sous le seuil · <b style="color:#b87f00">' + P.y.length + '</b> ▲ proches du seuil · <span class="muted">détail dans le tableau plus bas</span></p></div></div>';
@@ -693,6 +701,11 @@ svg text { font-family: var(--font-body); }
   }
   function wireSeuils() {
     var tb = document.getElementById("tobuycsv"); if (tb) { tb.addEventListener("click", tobuyCsv); }
+    var tm = document.getElementById("tlmore"); if (tm) { tm.addEventListener("click", function () {
+      var open = tm.getAttribute("data-open") !== "1";
+      document.querySelectorAll(".tl-more").forEach(function (a) { a.style.display = open ? "flex" : "none"; });
+      tm.setAttribute("data-open", open ? "1" : "0"); tm.textContent = tm.getAttribute(open ? "data-less" : "data-more");
+    }); }
     wireSeuilFilter();
     document.querySelectorAll("[data-st]").forEach(function (sel) {
       sel.addEventListener("change", function () {
