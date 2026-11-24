@@ -89,6 +89,13 @@ a:hover { color: #174a8c; }
 .banner.ok { background: #e9f7e9; border-left: 8px solid var(--green); }
 .banner.ko { background: #fbeaea; border-left: 8px solid var(--red); }
 .banner.warn { background: #fff6e0; border-left: 8px solid var(--yellow); }
+.rm-pager { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 14px; }
+.rm-pager button { min-width: 38px; padding: 6px 11px; border: 1px solid #c4c9d1; border-radius: 8px; background: #fff; color: var(--navy); font: inherit; font-weight: 600; cursor: pointer; }
+.rm-pager button:hover:not([disabled]) { background: #eef1f5; }
+.rm-pager button.on { background: var(--navy); border-color: var(--navy); color: #fff; cursor: default; }
+.rm-pager button[disabled] { opacity: .4; cursor: default; }
+.rm-pager .rm-pg-gap { padding: 0 2px; opacity: .6; }
+.rm-pager .rm-pg-info { margin-right: 8px; opacity: .75; }
 .btn-undo { background: #fff; border: 1px solid #999; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
 .zone { border: 3px dashed #b9b9b4; border-radius: 18px; box-shadow: var(--shadow); padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; background: var(--surface); }
 .zone.out { border-color: var(--out-btn); background: #f1f2f4; }
@@ -270,6 +277,47 @@ svg text { font-family: var(--font-body); }
   var ofFlash = null, ofResult = null, ofUndoInfo = null, ofCands = null;   // Scan entrée / sortie (liste)
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  // Pagination commune de toutes les listes : 20 lignes par page, « ‹ Précédent 1 2 3 … Suivant › » sous la liste (même code que le module, v1.19.0).
+  // Tout se passe dans la page : la recherche et les filtres portent toujours sur toutes les lignes.
+  function rmPager(all, anchor, o) {
+    o = o || {};
+    var per = o.per || 20, unit = o.unit || "lignes", page = 1, list = all.slice(), disp = o.display || "";
+    if (o.key) { try { page = parseInt(sessionStorage.getItem("rmPg_" + o.key), 10) || 1; } catch (e) {} }
+    var nav = document.createElement("div");
+    nav.className = "rm-pager"; nav.setAttribute("role", "navigation"); nav.setAttribute("aria-label", "Pages de la liste");
+    anchor.parentNode.insertBefore(nav, anchor.nextSibling);
+    function nums(p, n) { var r = [], last = 0; for (var i = 1; i <= n; i++) { if (i === 1 || i === n || (i >= p - 2 && i <= p + 2)) { if (i - last > 1) { r.push(0); } r.push(i); last = i; } } return r; }
+    function b(p, txt, dis, on) { return '<button type="button" data-p="' + p + '"' + (dis ? " disabled" : "") + (on ? ' class="on" aria-current="page"' : "") + '>' + txt + '</button>'; }
+    function draw() {
+      var n = list.length, pages = Math.max(1, Math.ceil(n / per)), i;
+      page = Math.min(Math.max(1, page), pages);
+      if (o.key) { try { sessionStorage.setItem("rmPg_" + o.key, page); } catch (e) {} }
+      var a = (page - 1) * per, z = Math.min(n, a + per);
+      for (i = 0; i < all.length; i++) { all[i].style.display = "none"; }
+      for (i = a; i < z; i++) { list[i].style.display = disp; }
+      if (n <= per) { nav.style.display = "none"; nav.innerHTML = ""; return; }
+      nav.style.display = "";
+      var h = '<span class="rm-pg-info">' + (a + 1) + "–" + z + " sur " + n + " " + unit + "</span>" + b(page - 1, "‹ Précédent", page === 1);
+      nums(page, pages).forEach(function (p) { h += p ? b(p, p, false, p === page) : '<span class="rm-pg-gap">…</span>'; });
+      nav.innerHTML = h + b(page + 1, "Suivant ›", page === pages);
+    }
+    nav.addEventListener("click", function (ev) {
+      var t = ev.target.closest("button[data-p]");
+      if (!t || t.disabled || t.classList.contains("on")) { return; }
+      page = parseInt(t.getAttribute("data-p"), 10); draw();
+      var top = (o.top || anchor).getBoundingClientRect().top; if (top < 0) { (o.top || anchor).scrollIntoView({ block: "start" }); }
+    });
+    draw();
+    return { set: function (l, keep) { list = l; if (!keep) { page = 1; } draw(); }, page: function () { return page; } };
+  }
+  function pgReset(key) { try { sessionStorage.removeItem("rmPg_" + key); } catch (e) {} }
+  // Tableaux sans filtre (ruptures, historique, aperçu de l'import) : <tbody data-pg="clé|unité">
+  function autoPagers() {
+    document.querySelectorAll("tbody[data-pg]").forEach(function (tb) {
+      var a = tb.getAttribute("data-pg").split("|"), rows = Array.prototype.slice.call(tb.rows);
+      rmPager(rows, tb.closest(".tablewrap") || tb.closest("table"), { per: 20, unit: a[1] || "lignes", key: a[0] });
+    });
+  }
   function tool(ref) { for (var i = 0; i < S.tools.length; i++) { if (S.tools[i].ref === ref) { return S.tools[i]; } } return null; }
   function status(t) {
     if (t.seuil <= 0) { return { k: "n", ic: "–", txt: "Pas de seuil" }; }
@@ -443,25 +491,25 @@ svg text { font-family: var(--font-body); }
       });
     });
     var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
-    // Outils sous le seuil, TOUS, dans l'ordre de priorité ci-dessus (v1.18.0) : 15 visibles, les autres en dépliant.
+    // Outils sous le seuil, TOUS, dans l'ordre de priorité ci-dessus (v1.18.0) : 20 par page (v1.19.0 ; avant : 15 visibles et « Afficher les N autres »).
     // Avant : « les 15 plus tendus » triés par écart en pièces seulement (beaucoup d'ex aequo, classés par référence).
-    var T = P.r, NF = 15;
+    var T = P.r, NF = 20;
     var pkey = function (t) { var o = openSince(t.ref); return (isOrdered(t.ref) ? 1 : 0) + "|" + (t.stock / Math.max(1, t.seuil)).toFixed(4) + "|" + (U[t.ref] || 0) + "|" + (o ? o.start : ""); };
     var ties = T.length > NF ? T.filter(function (t) { return pkey(t) === pkey(T[NF - 1]); }).length : 0;
     var histo = '<div style="margin:0 0 16px"><b>' + (T.length ? T.length + " outil" + (T.length > 1 ? "s" : "") + " sous le seuil — les plus urgents d&#39;abord" : "Outils sous le seuil") + '</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Ordre : pas encore commandés d&#39;abord, puis le stock le plus bas par rapport au seuil, puis les plus utilisés sur 30 jours, puis la rupture la plus ancienne. Barre = part du stock de sécurité qui manque.</p>' +
-      (T.length ? T.map(function (t, i) {
+      (T.length ? '<div id="tllist">' + T.map(function (t, i) {
         var gap = t.seuil - t.stock, o = openSince(t.ref), st = S.status[t.ref] ? S.status[t.ref].statut : "", meta = [];
         if (U[t.ref]) { meta.push(U[t.ref] + " sortie" + (U[t.ref] > 1 ? "s" : "") + "/30 j"); }
         if (o) { meta.push("depuis " + fmtDur(Date.now() - new Date(o.start).getTime())); }
-        return '<a href="#seuils" class="' + (i >= NF ? "tl-more" : "") + '" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap + (meta.length ? " · " + meta.join(" · ") : "") + (st ? " · suivi : " + st : "")) + '" style="display:' + (i >= NF ? "none" : "flex") + ';align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
+        return '<a href="#seuils" class="tl-item" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap + (meta.length ? " · " + meta.join(" · ") : "") + (st ? " · suivi : " + st : "")) + '" style="display:flex;align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
           '<span class="muted" style="flex:0 0 2.4em;text-align:right">' + (i + 1) + '</span>' +
           '<span style="flex:0 0 38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
           '<span style="flex:1 1 auto;height:14px;background:rgba(138,138,134,.15);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:' + (Math.min(1, gap / Math.max(1, t.seuil)) * 100).toFixed(1) + '%;background:var(--red)"></i></span>' +
           '<span style="flex:0 0 auto;min-width:92px;text-align:right;font-size:13px"><b style="color:var(--red)">−' + gap + '</b> <span class="muted">(' + t.stock + ' / ' + t.seuil + ')</span>' +
           (meta.length || st ? '<br><span class="muted" style="font-size:12px">' + esc(meta.join(" · ")) + '</span>' + (st ? ' <b style="color:#1a4f8f">' + esc(st) + '</b>' : '') : '') + '</span></a>';
-      }).join("") : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') +
+      }).join("") + '</div>' : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') +
       (ties > 1 ? '<p class="muted" style="margin:6px 0 0;font-size:13px">ⓘ ' + ties + ' outils sont à égalité (même stock par rapport au seuil, même consommation, même début de rupture) : ils sont affichés par référence. Le classement se précisera avec les sorties enregistrées.</p>' : '') +
-      (T.length > NF ? '<p style="margin:8px 0 0;text-align:center"><button type="button" class="btn-undo" id="tlmore" data-more="Afficher les ' + (T.length - NF) + ' autres" data-less="Réduire aux ' + NF + ' premiers">Afficher les ' + (T.length - NF) + ' autres</button></p>' : '') + '</div>';
+      '</div>';
     var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
       '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' + histo +
       '<p style="margin:0"><b style="color:var(--red)">' + P.r.length + '</b> ▼ sous le seuil · <b style="color:#b87f00">' + P.y.length + '</b> ▲ proches du seuil · <span class="muted">détail dans le tableau plus bas</span></p></div></div>';
@@ -649,15 +697,19 @@ svg text { font-family: var(--font-body); }
       (keys.length ? '<select id="sffam" aria-label="Famille" style="min-width:0"><option value="">Toutes les familles</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '"' + (sf.fam === k ? " selected" : "") + '>' + esc(f[k]) + '</option>'; }).join("") + '</select>' : "") +
       '<label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sflow"' + (sf.low ? " checked" : "") + '> Sous le seuil seulement</label><span class="muted" id="sfcount"></span></div>';
   }
+  var seuilPg = null, seuilFirst = true;
   function applySeuilFilter() {
     var rows = document.querySelectorAll("tr.rmrow"), n = 0, t = sf.q.trim().toLowerCase(), active = !!(t || sf.fam || sf.low || sf.suivi);
+    var lines = Array.prototype.slice.call(document.querySelectorAll("tr.grp, tr.rmrow"));
+    if (!seuilPg && rows.length) { seuilPg = rmPager(lines, rows[0].closest(".tablewrap"), { per: 20, unit: "lignes", key: "seuils" }); seuilFirst = true; }
     rows.forEach(function (r) {
       var st = r.getAttribute("data-state"), sv = r.getAttribute("data-suivi");
       var ok = (!t || r.getAttribute("data-txt").indexOf(t) >= 0) && (!sf.fam || r.getAttribute("data-fam") === sf.fam) && (!sf.low || st === "r")
         && (!sf.suivi || (sf.suivi === "__none" ? (st === "r" && !sv) : sv === sf.suivi)) && (active || !sf.fold[st]);
-      r.style.display = ok ? "" : "none"; if (ok) { n++; }
+      r.rmOk = ok; if (ok) { n++; }
     });
-    document.querySelectorAll("tr.grp").forEach(function (g) { g.style.display = active ? "none" : ""; g.classList.toggle("fold", !!sf.fold[g.getAttribute("data-g")]); });
+    document.querySelectorAll("tr.grp").forEach(function (g) { g.classList.toggle("fold", !!sf.fold[g.getAttribute("data-g")]); });
+    if (seuilPg) { seuilPg.set(lines.filter(function (l) { return l.classList.contains("grp") ? !active : l.rmOk; }), seuilFirst); seuilFirst = false; }
     document.querySelectorAll(".tile.clk").forEach(function (b) { b.classList.toggle("on", !!sf.suivi && b.getAttribute("data-sfsuivi") === sf.suivi); });
     var c = document.getElementById("sfcount"); if (c) { c.textContent = active ? n + " outil(s) affiché(s) sur " + rows.length : ""; }
   }
@@ -701,11 +753,8 @@ svg text { font-family: var(--font-body); }
   }
   function wireSeuils() {
     var tb = document.getElementById("tobuycsv"); if (tb) { tb.addEventListener("click", tobuyCsv); }
-    var tm = document.getElementById("tlmore"); if (tm) { tm.addEventListener("click", function () {
-      var open = tm.getAttribute("data-open") !== "1";
-      document.querySelectorAll(".tl-more").forEach(function (a) { a.style.display = open ? "flex" : "none"; });
-      tm.setAttribute("data-open", open ? "1" : "0"); tm.textContent = tm.getAttribute(open ? "data-less" : "data-more");
-    }); }
+    var tl = document.getElementById("tllist"); if (tl) { rmPager(Array.prototype.slice.call(tl.querySelectorAll(".tl-item")), tl, { per: 20, unit: "outils sous le seuil", display: "flex", key: "prio" }); }
+    seuilPg = null;
     wireSeuilFilter();
     document.querySelectorAll("[data-st]").forEach(function (sel) {
       sel.addEventListener("change", function () {
@@ -776,7 +825,7 @@ svg text { font-family: var(--font-body); }
     var avg = 0, longest = 0; done.forEach(function (x) { avg += x.dur; longest = Math.max(longest, x.dur); }); avg = done.length ? avg / done.length : 0;
     var bytool = {};
     rows.forEach(function (x) { if (x.b === null || x.b >= sinceMs) { var o = bytool[x.r.ref] || (bytool[x.r.ref] = { ref: x.r.ref, label: x.t.label, n: 0, total: 0, max: 0 }); o.n++; o.total += x.dur; o.max = Math.max(o.max, x.dur); } });
-    var tl = Object.keys(bytool).map(function (k) { return bytool[k]; }).sort(function (x, y) { return y.total - x.total; }).slice(0, 10);
+    var tl = Object.keys(bytool).map(function (k) { return bytool[k]; }).sort(function (x, y) { return y.total - x.total; });
     var maxOn = ongoing.length ? ongoing[0].dur : 0;
     var h = '<h1>Durée des ruptures</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px"><span class="muted">Ruptures terminées sur :</span>' +
       [[30, "30 jours"], [90, "90 jours"], [365, "1 an"], [0, "Tout"]].map(function (p) { return '<button type="button" class="btn-undo" data-rper="' + p[0] + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (p[0] === rupPer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + p[1] + '</button>'; }).join("") + '</div>';
@@ -785,21 +834,21 @@ svg text { font-family: var(--font-body); }
       '<div class="tile"><b>' + (maxOn ? fmtDur(maxOn) : "—") + '</b><span>rupture en cours la plus longue</span></div>' +
       '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (' + done.length + ')</span></div>' +
       '<div class="tile"><b>' + (longest ? fmtDur(longest) : "—") + '</b><span>rupture terminée la plus longue</span></div></div>';
-    h += '<h2>Ruptures en cours</h2>' + (ongoing.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Sous le seuil depuis</th><th>Durée</th><th></th><th class="num">Stock / mini</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
+    h += '<h2>Ruptures en cours</h2>' + (ongoing.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Sous le seuil depuis</th><th>Durée</th><th></th><th class="num">Stock / mini</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody data-pg="rupt_encours|ruptures en cours">' +
       ongoing.map(function (x) { var st = S.status[x.r.ref]; return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td><b>' + fmtDur(x.dur) + '</b></td><td><span style="display:block;height:8px;width:110px;border-radius:4px;background:#e6e9ee"><span style="display:block;height:8px;border-radius:4px;background:var(--red);width:' + Math.round(x.dur / maxOn * 100) + '%"></span></span></td><td class="num">' + x.t.stock + ' / ' + x.t.seuil + '</td><td>' + (st ? '<b>' + esc(st.statut) + '</b>' + (st.note ? ' <span class="muted">' + esc(st.note) + '</span>' : '') : '<span class="muted">— sans suivi —</span>') + '</td></tr>'; }).join("") +
       '</tbody></table></div></div>' : '<p class="muted">Aucun outil sous son seuil.</p>');
-    h += '<h2>Ruptures terminées (outil réapprovisionné)</h2>' + (done.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Passé sous le seuil le</th><th>Réapprovisionné le</th><th class="num">Durée</th><th class="num">Stock le plus bas</th></tr></thead><tbody>' +
-      done.slice(0, 50).map(function (x) { return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td>' + fmtDate(x.r.end) + '</td><td class="num"><b>' + fmtDur(x.dur) + '</b></td><td class="num">' + (x.r.min <= 0 ? '<span style="color:var(--red);font-weight:600">0 (rupture totale)</span>' : x.r.min + ' / mini ' + x.r.seuil) + '</td></tr>'; }).join("") +
+    h += '<h2>Ruptures terminées (outil réapprovisionné)</h2>' + (done.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Passé sous le seuil le</th><th>Réapprovisionné le</th><th class="num">Durée</th><th class="num">Stock le plus bas</th></tr></thead><tbody data-pg="rupt_finies|ruptures terminées">' +
+      done.map(function (x) { return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td>' + fmtDate(x.r.end) + '</td><td class="num"><b>' + fmtDur(x.dur) + '</b></td><td class="num">' + (x.r.min <= 0 ? '<span style="color:var(--red);font-weight:600">0 (rupture totale)</span>' : x.r.min + ' / mini ' + x.r.seuil) + '</td></tr>'; }).join("") +
       '</tbody></table></div></div>' : '<p class="muted">Aucune rupture terminée sur cette période.</p>');
     if (tl.length) {
-      h += '<h2>Par outil (temps total sous le seuil)</h2><div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Nombre de ruptures</th><th class="num">Temps total</th><th class="num">Durée moyenne</th><th class="num">Plus longue</th></tr></thead><tbody>' +
+      h += '<h2>Par outil (temps total sous le seuil)</h2><div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Nombre de ruptures</th><th class="num">Temps total</th><th class="num">Durée moyenne</th><th class="num">Plus longue</th></tr></thead><tbody data-pg="rupt_paroutil|outils">' +
         tl.map(function (o) { return '<tr><td>' + esc(o.ref) + ' <span class="muted">' + esc(o.label) + '</span></td><td class="num">' + o.n + '</td><td class="num"><b>' + fmtDur(o.total) + '</b></td><td class="num">' + fmtDur(o.total / o.n) + '</td><td class="num">' + fmtDur(o.max) + '</td></tr>'; }).join("") + '</tbody></table></div></div>';
     }
     h += '<p class="muted" style="font-size:13.5px">Une rupture commence quand le stock d\'un outil passe <b>sous son seuil mini</b> et se termine quand il remonte au niveau du seuil ou au-dessus (réapprovisionnement). Une sortie annulée tout de suite (moins de 10 minutes) n\'est pas comptée comme une rupture.</p>';
     return h;
   }
   function wireRupt() {
-    document.querySelectorAll("[data-rper]").forEach(function (b) { b.addEventListener("click", function () { rupPer = +b.getAttribute("data-rper"); render(); }); });
+    document.querySelectorAll("[data-rper]").forEach(function (b) { b.addEventListener("click", function () { rupPer = +b.getAttribute("data-rper"); pgReset("rupt_finies"); pgReset("rupt_paroutil"); render(); }); });
   }
 
   // Code 128 (jeu B : majuscules, minuscules, chiffres, ponctuation) : motifs de largeurs de barres, comme la bibliothèque de Dolibarr
@@ -839,9 +888,9 @@ svg text { font-family: var(--font-body); }
         '<input type="search" id="etq" placeholder="Rechercher un outil, une désignation, un emplacement…" value="' + esc(etq.q) + '" style="font:inherit;font-size:16px;height:42px;flex:1;min-width:220px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px">' +
         '<select id="etfam"><option value="">Toutes les familles</option>' + Object.keys(familles()).sort().map(function (k) { var n = familles()[k]; return '<option value="' + esc(n) + '"' + (n === etq.fam ? " selected" : "") + '>' + esc(n) + '</option>'; }).join("") + '</select></div>' +
       '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:10px"><button type="button" class="btn-undo" id="etall">Cocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etnone">Décocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etlow">Seulement les outils sous le seuil</button><button type="button" class="btn-undo" id="etclear">Tout décocher</button></div>' +
-      '<div class="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">' +
-        shown.slice(0, 60).map(function (t) { return '<label style="display:inline-flex;gap:5px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-family:var(--font-mono);font-size:13px"><input type="checkbox" data-etref="' + esc(t.ref) + '"' + (etq.off[t.ref] ? "" : " checked") + '>' + esc(t.ref.length > 9 ? t.ref : t.ref.slice(-4)) + '</label>'; }).join("") +
-        (shown.length > 60 ? '<span class="muted" style="align-self:center;font-size:13.5px">… ' + (shown.length - 60) + ' autres : affinez la recherche ou la famille</span>' : "") + '</div>' +
+      '<div class="chips" id="etchips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">' +
+        shown.map(function (t) { return '<label class="etchip" style="display:inline-flex;gap:5px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-family:var(--font-mono);font-size:13px"><input type="checkbox" data-etref="' + esc(t.ref) + '"' + (etq.off[t.ref] ? "" : " checked") + '>' + esc(t.ref.length > 9 ? t.ref : t.ref.slice(-4)) + '</label>'; }).join("") +
+        '</div>' +
       '<div class="row" style="justify-content:flex-start;margin-bottom:12px"><button type="button" class="btn-save" id="etprint">🖨 Imprimer</button><span class="muted">' + sel.length + ' outil(s) × ' + etq.copies + ' = ' + n + ' étiquette(s). Imprimez à l\'échelle 100 %.</span></div></div>';
     h += '<style>.et-sheet{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}' +
       '.et-lab{width:' + sz[1] + 'mm;height:' + sz[2] + 'mm;border:.2mm dashed #999;display:grid;grid-template-columns:1fr 27%;grid-template-rows:27% 1fr 15% 9%;overflow:hidden;break-inside:avoid;background:#156082;color:#fff;font-size:' + (sz[1] / 10) + 'pt;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif}' +
@@ -867,9 +916,10 @@ svg text { font-family: var(--font-body); }
     document.getElementById("etnone").addEventListener("click", function () { etqShown().forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
     document.getElementById("etclear").addEventListener("click", function () { S.tools.forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
     document.getElementById("etlow").addEventListener("click", function () { S.tools.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } }); render(); });
-    document.getElementById("etfam").addEventListener("change", function (e) { etq.fam = e.target.value; render(); });
+    document.getElementById("etfam").addEventListener("change", function (e) { etq.fam = e.target.value; pgReset("etq"); render(); });
+    var ec = document.getElementById("etchips"); if (ec) { rmPager(Array.prototype.slice.call(ec.querySelectorAll(".etchip")), ec, { per: 20, unit: "outils", display: "inline-flex", key: "etq" }); }
     var eq = document.getElementById("etq");
-    eq.addEventListener("input", function (e) { etq.q = e.target.value; var p = eq.selectionStart; render(); var n = document.getElementById("etq"); n.focus(); n.setSelectionRange(p, p); });
+    eq.addEventListener("input", function (e) { etq.q = e.target.value; pgReset("etq"); var p = eq.selectionStart; render(); var n = document.getElementById("etq"); n.focus(); n.setSelectionRange(p, p); });
     document.getElementById("etprint").addEventListener("click", function () { window.print(); });
   }
 
@@ -1037,7 +1087,7 @@ svg text { font-family: var(--font-body); }
         (c.error ? '<p style="margin:4px 0 12px"><b>Rien ne sera importé tant qu\'il y a des erreurs.</b> Corrigez le fichier puis renvoyez-le.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
           : (c.create + c.update === 0 ? '<p style="margin:4px 0 12px">Le fichier ne change rien : tout est déjà à jour.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
           : '<div class="row" style="justify-content:flex-start;margin:4px 0 16px"><button type="button" class="btn-save" id="xlconfirm" style="background:var(--green-btn)">✔ Confirmer l\'import</button><button type="button" class="btn-undo" id="xlclose">Annuler</button></div>')) +
-        '<div class="tablewrap"><table><thead><tr><th>Ligne</th><th>Référence</th><th>Action</th><th>Détail</th></tr></thead><tbody>' +
+        '<div class="tablewrap"><table><thead><tr><th>Ligne</th><th>Référence</th><th>Action</th><th>Détail</th></tr></thead><tbody data-pg="xlprev|lignes">' +
         pl.items.map(function (it) { var p = pill[it.action]; return '<tr><td>' + it.line + '</td><td><b>' + esc(it.ref) + '</b></td><td><span class="pill" style="background:' + p[1] + '">' + p[0] + '</span></td><td style="white-space:normal">' + (it.action === "error" ? '<span style="color:var(--red)">' + esc(it.error) + '</span>' : esc(it.changes.join(" ; "))) + '</td></tr>'; }).join("") + '</tbody></table></div>' + '</div></div>';
     }
     h += '<div class="box"><div class="hd">Importer des outils depuis Excel</div><div class="bd"><p class="muted" style="margin-bottom:12px">Choisissez un fichier <b>.xlsx</b> (ou .csv) au format de l\'export. Un outil dont la référence existe est mis à jour, une référence inconnue crée un nouvel outil. <b>Une cellule vide ne change rien</b>, et rien n\'est jamais supprimé. Un stock différent est enregistré comme un mouvement « Inventaire » dans l\'historique. Vous verrez un aperçu avant que quoi que ce soit soit enregistré.</p>' +
@@ -1120,8 +1170,10 @@ svg text { font-family: var(--font-body); }
     var rows = document.querySelectorAll(".suprow"), ones = document.querySelectorAll(".supone"), cnt = document.getElementById("supcnt"), word = document.getElementById("supword"), btn = document.getElementById("supbulk");
     function checked() { var c = 0; ones.forEach(function (o) { if (o.checked) { c++; } }); return c; }
     function upd() { var c = checked(); cnt.textContent = c + " coché(s)"; btn.disabled = !(c > 0 && word.value.trim() === "SUPPRIMER"); btn.textContent = c > 0 ? "🗑 Supprimer les " + c + " outil(s) cochés" : "🗑 Supprimer les outils cochés"; }
-    q.addEventListener("input", function () { var t = q.value.trim().toLowerCase(); rows.forEach(function (r) { r.style.display = (!t || r.getAttribute("data-txt").indexOf(t) >= 0) ? "" : "none"; }); });
-    document.getElementById("supvis").addEventListener("click", function () { rows.forEach(function (r) { if (r.style.display !== "none") { r.querySelector(".supone").checked = true; } }); upd(); });
+    var supRows = Array.prototype.slice.call(rows), supPg = rmPager(supRows, supRows.length ? supRows[0].closest(".tablewrap") || supRows[0].closest("table") : q, { per: 20, unit: "outils" });
+    supRows.forEach(function (r) { r.rmOk = true; });
+    q.addEventListener("input", function () { var t = q.value.trim().toLowerCase(); supPg.set(supRows.filter(function (r) { r.rmOk = !t || r.getAttribute("data-txt").indexOf(t) >= 0; return r.rmOk; })); });
+    document.getElementById("supvis").addEventListener("click", function () { rows.forEach(function (r) { if (r.rmOk) { r.querySelector(".supone").checked = true; } }); upd(); });   // tous les outils trouvés, sur toutes les pages
     document.getElementById("supunc").addEventListener("click", function () { ones.forEach(function (o) { o.checked = false; }); upd(); });
     ones.forEach(function (o) { o.addEventListener("change", upd); }); word.addEventListener("input", upd);
     btn.addEventListener("click", function () {
@@ -1149,21 +1201,21 @@ svg text { font-family: var(--font-body); }
         '<select id="hsens"><option value="">Entrées et sorties</option><option value="out"' + sel(hist.sens, "out") + '>Sorties</option><option value="in"' + sel(hist.sens, "in") + '>Entrées</option></select>' +
         '<select id="hdays"><option value="0">Toute la période</option><option value="7"' + sel(String(hist.days), "7") + '>7 derniers jours</option><option value="30"' + sel(String(hist.days), "30") + '>30 derniers jours</option><option value="90"' + sel(String(hist.days), "90") + '>90 derniers jours</option></select>' +
         '<button type="button" class="btn-undo" id="hcsv">⬇ Exporter en CSV</button></div>' +
-      '<p class="muted">' + rows.length + ' mouvement(s)' + (rows.length > hist.limit ? ', les ' + hist.limit + ' plus récents affichés' : '') + '</p>' +
-      '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
-      rows.slice(0, hist.limit).map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
+      '<p class="muted">' + rows.length + ' mouvement(s)</p>' +
+      '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody data-pg="hist|mouvements">' +
+      rows.map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
       (rows.length ? '' : '<tr><td colspan="5" class="muted">Aucun mouvement ne correspond.</td></tr>') +
-      '</tbody></table></div></div>' + (rows.length > hist.limit ? '<p style="text-align:center"><button type="button" class="btn-undo" id="hmore">Afficher 200 de plus</button></p>' : '');
+      '</tbody></table></div></div>';
   }
   function csvCell(v) { v = String(v == null ? "" : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   function csvDownload(rows, name) { download(new Blob(["\ufeff" + rows.map(function (r) { return r.map(csvCell).join(";"); }).join("\r\n")], { type: "text/csv;charset=utf-8" }), name); }
   function wireHisto() {
     var q = document.getElementById("hq");
-    q.addEventListener("input", function (e) { hist.q = e.target.value; hist.limit = 200; var p = q.selectionStart; render(); var n = document.getElementById("hq"); n.focus(); n.setSelectionRange(p, p); });
-    document.getElementById("hsens").addEventListener("change", function (e) { hist.sens = e.target.value; hist.limit = 200; render(); });
-    document.getElementById("hdays").addEventListener("change", function (e) { hist.days = parseInt(e.target.value, 10) || 0; hist.limit = 200; render(); });
+    q.addEventListener("input", function (e) { hist.q = e.target.value; hist.limit = 200; pgReset("hist"); var p = q.selectionStart; render(); var n = document.getElementById("hq"); n.focus(); n.setSelectionRange(p, p); });
+    document.getElementById("hsens").addEventListener("change", function (e) { hist.sens = e.target.value; hist.limit = 200; pgReset("hist"); render(); });
+    document.getElementById("hdays").addEventListener("change", function (e) { hist.days = parseInt(e.target.value, 10) || 0; hist.limit = 200; pgReset("hist"); render(); });
     document.getElementById("hcsv").addEventListener("click", function () { csvDownload([["Date", "Qui", "Outil", "Quantité", "Libellé"]].concat(histRows().map(function (m) { return [fmtDate(m.t), m.who, m.ref, m.qty, m.label]; })), "historique_mouvements.csv"); });
-    var more = document.getElementById("hmore"); if (more) { more.addEventListener("click", function () { hist.limit += 200; keepScroll(); }); }
+
   }
 
   // Même logique que inventaire.php : un écart de stock devient un mouvement « Inventaire », seuil/désiré mis à jour
@@ -1188,8 +1240,11 @@ svg text { font-family: var(--font-body); }
     return h;
   }
 
+  var saisiePg = null, saisieRows = [];
   function wireSaisie() {
     var form = document.getElementById("saisieform");
+    saisieRows = Array.prototype.slice.call(form.querySelectorAll("tbody tr"));
+    saisiePg = rmPager(saisieRows, form.querySelector(".box"), { per: 20, unit: "outils" });   // les cases des autres pages restent dans le formulaire
     form.querySelectorAll("input").forEach(function (el) {
       el.addEventListener("input", function () {
         var orig = el.dataset.orig !== undefined ? el.dataset.orig : "";
@@ -1201,7 +1256,7 @@ svg text { font-family: var(--font-body); }
     var sq = document.getElementById("sq");
     sq.addEventListener("input", function () {
       var q = sq.value.trim().toLowerCase();
-      form.querySelectorAll("tbody tr").forEach(function (tr) { var tx = tr.cells[0].textContent + " " + tr.cells[1].textContent + " " + tr.querySelector('[data-f="famille"]').value; tr.style.display = !q || tx.toLowerCase().indexOf(q) >= 0 ? "" : "none"; });
+      saisiePg.set(saisieRows.filter(function (tr) { var tx = tr.cells[0].textContent + " " + tr.cells[1].textContent + " " + tr.querySelector('[data-f="famille"]').value; return !q || tx.toLowerCase().indexOf(q) >= 0; }));
     });
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -1281,26 +1336,28 @@ svg text { font-family: var(--font-body); }
     return h;
   }
   function wireCat() {
-    var input = document.getElementById("ctq"), rows = Array.prototype.slice.call(document.querySelectorAll("#cttable .ctrow"));
+    var input = document.getElementById("ctq"), rows = Array.prototype.slice.call(document.querySelectorAll("#cttable .ctrow")), matched = [], first = true;
+    var pg = rmPager(rows, document.getElementById("cttable").closest(".box"), { per: 20, unit: "outils", key: "catalogue" });
     function apply() {
-      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0, cf = { "": 0 }, ce = { "": 0 };
+      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0, cf = { "": 0 }, ce = { "": 0 }; matched = [];
       rows.forEach(function (r) {
         var f = r.getAttribute("data-fam"), e = r.getAttribute("data-etat"), s = r.getAttribute("data-s"), okq = true;
         for (var i = 0; okq && i < words.length; i++) { if (s.indexOf(words[i]) < 0) { okq = false; } }
         var okf = !ct.fam || f === ct.fam, oke = !ct.etat || e === ct.etat, ok = okq && okf && oke;
         if (okq && oke) { cf[""]++; cf[f] = (cf[f] || 0) + 1; }   // compteurs des boutons : recherche + l'autre filtre
         if (okq && okf) { ce[""]++; ce[e] = (ce[e] || 0) + 1; }
-        r.style.display = ok ? "" : "none"; if (ok) { n++; }
+        if (ok) { n++; matched.push(r); }
       });
+      pg.set(matched, first); first = false;
       document.querySelectorAll(".ct-chip").forEach(function (c) { var sp = c.querySelector(".n"), m = c.getAttribute("data-ctg") === "fam" ? cf : ce; if (sp) { sp.textContent = m[c.getAttribute("data-v")] || 0; } });
-      document.getElementById("ctinfo").textContent = n === rows.length ? rows.length + " outils" : n + " outil(s) affiché(s) sur " + rows.length;
+      document.getElementById("ctinfo").textContent = n === rows.length ? rows.length + " outils" : n + " outil(s) trouvé(s) sur " + rows.length;
       document.getElementById("ctnone").style.display = n ? "none" : "block";
     }
     input.addEventListener("input", apply);
     input.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") { return; }
-      e.preventDefault(); var vis = rows.filter(function (r) { return r.style.display !== "none"; });
-      if (vis.length === 1) { vis[0].querySelector(".ctfiche").click(); }
+      e.preventDefault();
+      if (matched.length === 1) { matched[0].querySelector(".ctfiche").click(); }
     });
     document.querySelectorAll(".ct-chip").forEach(function (b) { b.addEventListener("click", function () {
       var g = b.getAttribute("data-ctg"); ct[g] = b.getAttribute("data-v");
@@ -1332,6 +1389,7 @@ svg text { font-family: var(--font-body); }
     var cv = v === "of" ? "scan" : v, g = GROUPS.filter(function (x) { return x[1].indexOf(cv) >= 0; })[0];
     document.getElementById("nav").innerHTML = GROUPS.map(function (x) { return '<a href="#' + x[1][0] + '" data-v="' + x[1][0] + '" class="' + (x[1].length > 1 ? "grp" : "") + (x === g ? " on" : "") + '">' + x[0] + '</a>'; }).join("");
     document.getElementById("subnav").innerHTML = g && g[1].length > 1 ? g[1].map(function (p) { return '<a href="#' + p + '" data-v="' + p + '" class="' + (p === cv ? "on" : "") + '">' + LABELS[p] + '</a>'; }).join("") : "";
+    autoPagers();
     if (v === "catalogue") { wireCat(); }
     if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
