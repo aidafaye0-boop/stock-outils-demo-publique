@@ -1242,18 +1242,93 @@ svg text { font-family: var(--font-body); }
     });
   }
 
-  var VIEWS = { accueil: vAccueil, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
-  var LABELS = { accueil: "Accueil", scan: "Scan entrée / sortie", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)" };
-  var GROUPS = [["Accueil", ["accueil"]], ["Scan entrée / sortie", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
+  // Catalogue des outils (comme catalogue.php du module, onglet « Outils ») : recherche, filtres famille / état, fiche, étiquette, sortie
+  var ct = { q: "", fam: "", etat: "", sort: "ref", dir: 1 }, ctPending = null;
+  function ctNorm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function vCat() {
+    var fams = {}, cnt = { r: 0, y: 0, g: 0, n: 0 }, col = { r: "var(--red)", y: "var(--yellow)", g: "var(--green)", n: "var(--grey)" };
+    S.tools.forEach(function (t) { var f = t.famille || "(sans famille)"; fams[f] = (fams[f] || 0) + 1; cnt[status(t).k]++; });
+    var fk = Object.keys(fams).sort(function (a, b) { return (a === "(sans famille)") - (b === "(sans famille)") || a.localeCompare(b, "fr"); });
+    function chip(grp, v, txt, n, on) { return '<button type="button" class="ct-chip' + (on ? " on" : "") + '" data-ctg="' + grp + '" data-v="' + esc(v) + '">' + txt + (n !== null ? '<span class="n">' + n + '</span>' : "") + '</button>'; }
+    var h = '<style>.ct-chip{padding:6px 14px;border:2px solid #bbb;border-radius:18px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;background:#fff}.ct-chip .n{font-weight:400;opacity:.75;margin-left:5px}.ct-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}.ct-dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}.ct-empl{display:inline-block;min-width:44px;text-align:center;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--navy-soft)}.ct-act a,.ct-act button{display:inline-block;padding:4px 10px;margin:1px;border:1px solid #c4c9d1;border-radius:6px;background:#fff;color:var(--navy);font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}.ct-act button.out{border-color:#1f66c2;color:#1f66c2}th.ctsort{cursor:pointer;user-select:none}th.ctsort:after{content:" ⇅";opacity:.35}th.ctsort.asc:after{content:" ▲";opacity:.8}th.ctsort.desc:after{content:" ▼";opacity:.8}</style>';
+    h += '<div class="row" style="justify-content:space-between;align-items:center"><h1>Catalogue des outils</h1><a href="#saisie" class="btn-undo" style="text-decoration:none" title="Dans l\'outil réel : fiche de création d\'un outil Dolibarr. Dans la démo : ajout par la Saisie rapide ou l\'import Excel.">+ Nouvel outil</a></div>';
+    h += '<p style="margin:12px 0"><input type="search" id="ctq" value="' + esc(ct.q) + '" placeholder="Rechercher un outil : référence, désignation, emplacement…" aria-label="Rechercher un outil" autocomplete="off" style="font:inherit;font-size:18px;height:48px;width:100%;max-width:720px;padding:0 14px;border:2px solid var(--navy);border-radius:10px;box-sizing:border-box"></p>';
+    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">Famille :</span>' + chip("fam", "", "Toutes", S.tools.length, ct.fam === "") + fk.map(function (f) { return chip("fam", f, esc(f), fams[f], ct.fam === f); }).join("") + '</div>';
+    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">État :</span>' + chip("etat", "", "Tous", null, ct.etat === "") +
+      [["r", "▼ Sous le seuil"], ["y", "▲ Proche du seuil"], ["g", "✓ OK"], ["n", "– Pas de seuil"]].filter(function (e) { return e[0] !== "n" || cnt.n; }).map(function (e) { return chip("etat", e[0], '<i class="ct-dot" style="background:' + col[e[0]] + '"></i>' + e[1], cnt[e[0]], ct.etat === e[0]); }).join("") + '</div>';
+    h += '<div class="muted" id="ctinfo" style="margin:6px 0 8px"></div>';
+    var heads = [["ref", "Référence", ""], ["label", "Désignation", ""], ["famille", "Famille", ""], ["emplacement", "Emplacement", ""], ["stock", "Stock", "num"], [null, "Seuil mini", "num"], ["etat", "État", ""], [null, "Actions", ""]];
+    h += '<div class="box"><div class="tablewrap"><table id="cttable"><thead><tr>' + heads.map(function (x) { return '<th class="' + x[2] + (x[0] ? " ctsort" + (ct.sort === x[0] ? (ct.dir === 1 ? " asc" : " desc") : "") : "") + '"' + (x[0] ? ' data-k="' + x[0] + '"' : "") + '>' + x[1] + '</th>'; }).join("") + '</tr></thead><tbody>';
+    var ord = { r: 0, y: 1, g: 2, n: 3 }, cmp = new Intl.Collator("fr", { numeric: true, sensitivity: "base" });
+    var list = S.tools.slice().sort(function (a, b) {
+      var r, k = ct.sort;
+      if (k === "stock") { r = a.stock - b.stock; }
+      else if (k === "etat") { r = (ord[status(a).k] - ord[status(b).k]) || ((a.seuil > 0 ? a.stock / a.seuil : 99) - (b.seuil > 0 ? b.stock / b.seuil : 99)); }
+      else { r = cmp.compare(a[k] || "￿", b[k] || "￿"); }
+      return (r || cmp.compare(a.ref, b.ref)) * ct.dir;
+    });
+    h += list.map(function (t) {
+      var s = status(t), st = S.status[t.ref];
+      return '<tr class="ctrow" data-s="' + esc(ctNorm([t.ref, t.label, t.famille, t.emplacement, t.barcode].join(" "))) + '" data-fam="' + esc(t.famille || "(sans famille)") + '" data-etat="' + s.k + '">' +
+        '<td><b>' + esc(t.ref) + '</b></td><td style="white-space:normal">' + esc(t.label) + '</td><td>' + (t.famille ? esc(t.famille) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (t.emplacement ? '<span class="ct-empl">' + esc(t.emplacement) + '</span>' : '<span class="muted">—</span>') + '</td>' +
+        '<td class="num" style="font-size:16px"><b>' + t.stock + '</b></td><td class="num">' + (t.seuil > 0 ? t.seuil : '<span class="muted">—</span>') + '</td>' +
+        '<td><i class="ct-dot" style="background:' + col[s.k] + '"></i>' + s.ic + ' ' + s.txt + (st && (s.k === "r" || s.k === "y") ? '<br><b style="font-size:12.5px;opacity:.8">' + esc(st.statut) + '</b>' : "") + '</td>' +
+        '<td class="ct-act"><a href="#seuils" class="ctfiche" data-ref="' + esc(t.ref) + '" title="Voir cet outil dans le tableau des seuils">Fiche</a><a href="#etiquettes" class="etqone" data-ref="' + esc(t.ref) + '" title="Imprimer l\'étiquette de cet outil">🖨 Étiquette</a>' + (t.stock > 0 ? '<button type="button" class="out" data-ref="' + esc(t.ref) + '" title="Ajouter cet outil à la page de scan, en sortie">Sortie</button>' : "") + '</td></tr>';
+    }).join("");
+    h += '</tbody></table><div class="muted" id="ctnone" style="display:none;padding:18px;text-align:center">Aucun outil ne correspond à la recherche.</div></div></div>';
+    h += '<p class="muted" style="margin-top:12px">Astuce : avec la douchette, scannez l\'étiquette dans la barre de recherche, puis <b>Entrée</b> ouvre l\'outil si un seul correspond. Cliquez sur un titre de colonne pour trier. Dans l\'outil réel, cette page s\'ouvre par l\'onglet « Outils ».</p>';
+    return h;
+  }
+  function wireCat() {
+    var input = document.getElementById("ctq"), rows = Array.prototype.slice.call(document.querySelectorAll("#cttable .ctrow"));
+    function apply() {
+      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0;
+      rows.forEach(function (r) {
+        var ok = (!ct.fam || r.getAttribute("data-fam") === ct.fam) && (!ct.etat || r.getAttribute("data-etat") === ct.etat), s = r.getAttribute("data-s");
+        for (var i = 0; ok && i < words.length; i++) { if (s.indexOf(words[i]) < 0) { ok = false; } }
+        r.style.display = ok ? "" : "none"; if (ok) { n++; }
+      });
+      document.getElementById("ctinfo").textContent = n === rows.length ? rows.length + " outils" : n + " outil(s) affiché(s) sur " + rows.length;
+      document.getElementById("ctnone").style.display = n ? "none" : "block";
+    }
+    input.addEventListener("input", apply);
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") { return; }
+      e.preventDefault(); var vis = rows.filter(function (r) { return r.style.display !== "none"; });
+      if (vis.length === 1) { vis[0].querySelector(".ctfiche").click(); }
+    });
+    document.querySelectorAll(".ct-chip").forEach(function (b) { b.addEventListener("click", function () {
+      var g = b.getAttribute("data-ctg"); ct[g] = b.getAttribute("data-v");
+      document.querySelectorAll('.ct-chip[data-ctg="' + g + '"]').forEach(function (c) { c.classList.toggle("on", c === b); }); apply();
+    }); });
+    document.querySelectorAll("#cttable th.ctsort").forEach(function (th) { th.addEventListener("click", function () {
+      var k = th.getAttribute("data-k"); ct.dir = ct.sort === k ? -ct.dir : 1; ct.sort = k; render(); var i = document.getElementById("ctq"); if (i) { i.focus(); }
+    }); });
+    document.querySelectorAll(".ctfiche").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); sf.q = a.getAttribute("data-ref"); location.hash = "seuils"; }); });
+    document.querySelectorAll("#cttable button.out").forEach(function (b) { b.addEventListener("click", function () { ctPending = b.getAttribute("data-ref"); location.hash = "scan"; }); });
+    document.querySelectorAll(".etqone").forEach(function (a) { a.addEventListener("click", function (e) {
+      e.preventDefault(); var r = a.getAttribute("data-ref");
+      S.tools.forEach(function (t) { if (t.ref === r) { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } });
+      etq.copies = 1; etq.q = ""; etq.fam = ""; location.hash = "etiquettes";
+    }); });
+    apply(); input.focus();
+  }
+
+  var VIEWS = { accueil: vAccueil, catalogue: vCat, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
+  var LABELS = { accueil: "Accueil", catalogue: "Catalogue des outils", scan: "Scan entrée / sortie", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)" };
+  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan entrée / sortie", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
     var v = current(), el = document.getElementById("view");
+    if ((v === "scan" || v === "of") && ctPending) { var cr = ctPending; ctPending = null; S.of.sens = 1; ofAdd(cr); return; }   // bouton « Sortie » du catalogue
     cleanStatus();
     el.innerHTML = VIEWS[v]();
     var cv = v === "of" ? "scan" : v, g = GROUPS.filter(function (x) { return x[1].indexOf(cv) >= 0; })[0];
     document.getElementById("nav").innerHTML = GROUPS.map(function (x) { return '<a href="#' + x[1][0] + '" data-v="' + x[1][0] + '" class="' + (x[1].length > 1 ? "grp" : "") + (x === g ? " on" : "") + '">' + x[0] + '</a>'; }).join("");
     document.getElementById("subnav").innerHTML = g && g[1].length > 1 ? g[1].map(function (p) { return '<a href="#' + p + '" data-v="' + p + '" class="' + (p === cv ? "on" : "") + '">' + LABELS[p] + '</a>'; }).join("") : "";
+    if (v === "catalogue") { wireCat(); }
     if (v === "scan" || v === "of") { wireOf(); }
     if (v === "seuils") { wireSeuils(); }
     if (v === "utilisation") { wireUtil(); }
