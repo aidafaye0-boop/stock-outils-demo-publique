@@ -1254,7 +1254,7 @@ svg text { font-family: var(--font-body); }
     h += '<div class="row" style="justify-content:space-between;align-items:center"><h1>Catalogue des outils</h1><a href="#saisie" class="btn-undo" style="text-decoration:none" title="Dans l\'outil réel : fiche de création d\'un outil Dolibarr. Dans la démo : ajout par la Saisie rapide ou l\'import Excel.">+ Nouvel outil</a></div>';
     h += '<p style="margin:12px 0"><input type="search" id="ctq" value="' + esc(ct.q) + '" placeholder="Rechercher un outil : référence, désignation, emplacement…" aria-label="Rechercher un outil" autocomplete="off" style="font:inherit;font-size:18px;height:48px;width:100%;max-width:720px;padding:0 14px;border:2px solid var(--navy);border-radius:10px;box-sizing:border-box"></p>';
     h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">Famille :</span>' + chip("fam", "", "Toutes", S.tools.length, ct.fam === "") + fk.map(function (f) { return chip("fam", f, esc(f), fams[f], ct.fam === f); }).join("") + '</div>';
-    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">État :</span>' + chip("etat", "", "Tous", null, ct.etat === "") +
+    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">État :</span>' + chip("etat", "", "Tous", S.tools.length, ct.etat === "") +
       [["r", "▼ Sous le seuil"], ["y", "▲ Proche du seuil"], ["g", "✓ OK"], ["n", "– Pas de seuil"]].filter(function (e) { return e[0] !== "n" || cnt.n; }).map(function (e) { return chip("etat", e[0], '<i class="ct-dot" style="background:' + col[e[0]] + '"></i>' + e[1], cnt[e[0]], ct.etat === e[0]); }).join("") + '</div>';
     h += '<div class="muted" id="ctinfo" style="margin:6px 0 8px"></div>';
     var heads = [["ref", "Référence", ""], ["label", "Désignation", ""], ["famille", "Famille", ""], ["emplacement", "Emplacement", ""], ["stock", "Stock", "num"], [null, "Seuil mini", "num"], ["etat", "État", ""], [null, "Actions", ""]];
@@ -1283,12 +1283,16 @@ svg text { font-family: var(--font-body); }
   function wireCat() {
     var input = document.getElementById("ctq"), rows = Array.prototype.slice.call(document.querySelectorAll("#cttable .ctrow"));
     function apply() {
-      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0;
+      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0, cf = { "": 0 }, ce = { "": 0 };
       rows.forEach(function (r) {
-        var ok = (!ct.fam || r.getAttribute("data-fam") === ct.fam) && (!ct.etat || r.getAttribute("data-etat") === ct.etat), s = r.getAttribute("data-s");
-        for (var i = 0; ok && i < words.length; i++) { if (s.indexOf(words[i]) < 0) { ok = false; } }
+        var f = r.getAttribute("data-fam"), e = r.getAttribute("data-etat"), s = r.getAttribute("data-s"), okq = true;
+        for (var i = 0; okq && i < words.length; i++) { if (s.indexOf(words[i]) < 0) { okq = false; } }
+        var okf = !ct.fam || f === ct.fam, oke = !ct.etat || e === ct.etat, ok = okq && okf && oke;
+        if (okq && oke) { cf[""]++; cf[f] = (cf[f] || 0) + 1; }   // compteurs des boutons : recherche + l'autre filtre
+        if (okq && okf) { ce[""]++; ce[e] = (ce[e] || 0) + 1; }
         r.style.display = ok ? "" : "none"; if (ok) { n++; }
       });
+      document.querySelectorAll(".ct-chip").forEach(function (c) { var sp = c.querySelector(".n"), m = c.getAttribute("data-ctg") === "fam" ? cf : ce; if (sp) { sp.textContent = m[c.getAttribute("data-v")] || 0; } });
       document.getElementById("ctinfo").textContent = n === rows.length ? rows.length + " outils" : n + " outil(s) affiché(s) sur " + rows.length;
       document.getElementById("ctnone").style.display = n ? "none" : "block";
     }
