@@ -308,7 +308,8 @@ svg text { font-family: var(--font-body); }
       var top = (o.top || anchor).getBoundingClientRect().top; if (top < 0) { (o.top || anchor).scrollIntoView({ block: "start" }); }
     });
     draw();
-    return { set: function (l, keep) { list = l; if (!keep) { page = 1; } draw(); }, page: function () { return page; } };
+    return { set: function (l, keep) { list = l; if (!keep) { page = 1; } draw(); }, page: function () { return page; },
+      show: function (el) { var i = list.indexOf(el); if (i < 0) { list = all.slice(); i = all.indexOf(el); } if (i >= 0) { page = Math.floor(i / per) + 1; draw(); } } };
   }
   function pgReset(key) { try { sessionStorage.removeItem("rmPg_" + key); } catch (e) {} }
   // Tableaux sans filtre (ruptures, historique, aperçu de l'import) : <tbody data-pg="clé|unité">
@@ -1234,7 +1235,7 @@ svg text { font-family: var(--font-body); }
           '<td class="num"><input type="number" min="0" step="1" data-f="counted" data-ref="' + esc(t.ref) + '" placeholder="' + t.stock + '"></td>' +
           '<td class="num"><input type="number" min="0" step="1" data-f="seuil" data-ref="' + esc(t.ref) + '" data-orig="' + sv + '" value="' + sv + '"></td>' +
           '<td class="num"><input type="number" min="0" step="1" data-f="desired" data-ref="' + esc(t.ref) + '" data-orig="' + dv + '" value="' + dv + '"></td>' +
-          '<td class="num"><input type="number" min="0" step="0.01" style="width:100px" data-f="price" data-ref="' + esc(t.ref) + '" data-orig="' + (t.price > 0 ? t.price : "") + '" value="' + (t.price > 0 ? t.price : "") + '"></td></tr>';
+          '<td class="num"><input type="number" min="0" step="any" style="width:100px" data-f="price" data-ref="' + esc(t.ref) + '" data-orig="' + (t.price > 0 ? t.price : "") + '" value="' + (t.price > 0 ? t.price : "") + '"></td></tr>';
       }).join("") +
       '</tbody></table></div></div><div class="savebar"><span id="nchg" class="muted">Aucune modification</span><button type="submit" class="btn-save">Enregistrer tout</button></div></form>';
     return h;

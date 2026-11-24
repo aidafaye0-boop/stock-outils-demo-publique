@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Démo Stock outils</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout : réplique allégée de l'écran Dolibarr (bandeau marine + pages), thème clair unique comme l'application réelle */
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #17202c;
+  --muted: #5d6877;
+  --line: #dde1e6;
+  --navy: #263c5c;
+  --navy-soft: #e7ecf3;
+  --red: #d03b3b;
+  --red-btn: #b8322f;
+  --out-btn: #1f66c2;
+  --yellow: #fab219;
+  --green: #0ca30c;
+  --green-btn: #1f7a1f;
+  --grey: #8a8a86;
+  --blue: #2a78d6;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; background: linear-gradient(180deg, #eef2f7 0, var(--bg) 320px) no-repeat, var(--bg); -webkit-font-smoothing: antialiased; }
+:root { --shadow: 0 1px 2px rgba(23,32,44,.06), 0 6px 18px rgba(23,32,44,.07); --shadow-hover: 0 2px 4px rgba(23,32,44,.08), 0 10px 26px rgba(23,32,44,.12); --radius: 14px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--navy); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.demo-note { background: #fff4d6; color: #5a4300; font-size: 13.5px; padding-block: 8px; text-align: center; }
+.demo-note button { font: inherit; background: none; border: 0; color: #5a4300; text-decoration: underline; cursor: pointer; padding: 0 4px; }
+
+.topbar { background: linear-gradient(180deg, #2c4568, var(--navy)); box-shadow: 0 2px 10px rgba(23,32,44,.25); color: #fff; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.topbar .in { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding-block: 8px; }
+.brand { font-weight: 700; letter-spacing: .01em; margin-right: 10px; white-space: nowrap; }
+.brand small { font-weight: 400; opacity: .7; margin-left: 6px; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; }
+.topbar .subrow { padding-block: 0 8px; margin-top: -2px; }
+#subnav a { font-size: 13.5px; padding: 5px 12px; background: rgba(255,255,255,.08); }
+#subnav a.on { background: #fff; }
+#subnav:empty { display: none; }
+#nav a.grp::after { content: " ▾"; font-size: 11px; opacity: .7; }
+html, body { overflow-x: hidden; }
+@media (max-width: 640px) { nav { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; } nav a { white-space: nowrap; flex: none; padding: 8px 11px; } .topbar .in { flex-wrap: wrap; } .brand { width: 100%; } }
+nav a { color: #dfe7f2; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 14.5px; transition: background .15s, color .15s; }
+nav a:hover { background: rgba(255,255,255,.1); }
+nav a.on { background: #fff; color: var(--navy); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+nav a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+main { max-width: 1120px; margin: 0 auto; padding-block: 26px 60px; display: flex; flex-direction: column; gap: 22px; }
+h1 { font-size: 24px; margin: 0; color: var(--navy); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 17px; margin: 0; color: var(--navy); font-weight: 600; }
+p { margin: 0; }
+a { color: #1f5fb4; }
+a:hover { color: #174a8c; }
+.muted { color: var(--muted); }
+.intro { max-width: 70ch; color: var(--muted); }
+
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.box > .hd { background: #f3f5f8; padding: 12px 18px; font-weight: 600; color: var(--navy); border-bottom: 1px solid var(--line); }
+.box > .bd { padding: 14px 16px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+
+.shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.shortcuts a { display: flex; flex-direction: column; gap: 4px; padding: 16px 14px; border-radius: 12px; text-decoration: none; background: #eef1f5; color: var(--ink); transition: transform .12s, box-shadow .12s; }
+.shortcuts a:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.shortcuts a.main { background: var(--navy); color: #fff; }
+.shortcuts b { font-size: 16px; }
+.shortcuts span { font-size: 13px; opacity: .8; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.tile { background: #eef1f5; border-radius: 12px; padding: 12px 14px; }
+.tile b { display: block; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile span { font-size: 13px; color: var(--muted); }
+
+/* Scan */
+.scanwrap { max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
+.banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; border-radius: 12px; font-size: 15.5px; box-shadow: var(--shadow); }
+.banner .ic { font-size: 24px; line-height: 1; }
+.banner .grow { flex: 1; min-width: 0; }
+.banner.ok { background: #e9f7e9; border-left: 8px solid var(--green); }
+.banner.ko { background: #fbeaea; border-left: 8px solid var(--red); }
+.banner.warn { background: #fff6e0; border-left: 8px solid var(--yellow); }
+.rm-pager { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 14px; }
+.rm-pager button { min-width: 38px; padding: 6px 11px; border: 1px solid #c4c9d1; border-radius: 8px; background: #fff; color: var(--navy); font: inherit; font-weight: 600; cursor: pointer; }
+.rm-pager button:hover:not([disabled]) { background: #eef1f5; }
+.rm-pager button.on { background: var(--navy); border-color: var(--navy); color: #fff; cursor: default; }
+.rm-pager button[disabled] { opacity: .4; cursor: default; }
+.rm-pager .rm-pg-gap { padding: 0 2px; opacity: .6; }
+.rm-pager .rm-pg-info { margin-right: 8px; opacity: .75; }
+.btn-undo { background: #fff; border: 1px solid #999; border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+.zone { border: 3px dashed #b9b9b4; border-radius: 18px; box-shadow: var(--shadow); padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; background: var(--surface); }
+.zone.out { border-color: var(--out-btn); background: #f1f2f4; }
+.zone.in { border-color: var(--green-btn); background: #f2faf2; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.sens button { font: inherit; font-weight: 600; padding: 9px 18px; border: 2px solid #bbb; border-radius: 10px; background: #fff; cursor: pointer; color: var(--ink); }
+.sens button.on.o { background: var(--out-btn); border-color: var(--out-btn); color: #fff; }
+.sens button.on.i { background: var(--green-btn); border-color: var(--green-btn); color: #fff; }
+select { font: inherit; font-size: 16px; height: 42px; min-width: 190px; padding: 0 10px; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); }
+.state { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--out-btn); }
+.zone.in .dot { background: var(--green); }
+.code { font: inherit; font-size: 22px; padding: 10px 14px; width: 100%; max-width: 420px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(23,32,44,.05); background: #fff; color: var(--ink); }
+.try { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.try .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.try button { font-family: var(--font-mono); font-size: 13px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink); }
+.try button:hover { border-color: var(--navy); }
+.help { color: var(--muted); font-size: 14px; max-width: 60ch; }
+.cands { display: flex; flex-direction: column; }
+.cands button { text-align: left; font: inherit; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink); }
+
+/* Tables */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th { text-align: left; font-weight: 600; color: var(--muted); background: #f3f5f8; padding: 11px 14px; white-space: nowrap; }
+td { padding: 10px 14px; border-top: 1px solid #e8ebef; white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.r td { background: #fcf1f1; } tr.y td { background: #fffaee; }
+.pill { display: inline-block; padding: 3px 11px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; }
+.pill.r { background: var(--red); } .pill.y { background: var(--yellow); color: #17202c; } .pill.g { background: var(--green); } .pill.n { background: var(--grey); }
+.qplus { color: var(--green-btn); font-weight: 600; } .qmin { color: var(--red-btn); font-weight: 600; }
+
+.qty { width: 90px; height: 42px; padding: 0 10px; font: inherit; font-size: 20px; text-align: center; border: 1px solid #c9cfd8; border-radius: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 1px 2px rgba(23,32,44,.05); }
+
+/* Filigrane « Version test » (comme lib/rmecastock.lib.php dans le module) */
+.rm-test-wm { position: fixed; top: 52%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: min(13vw, 150px); font-weight: 700; letter-spacing: .08em; white-space: nowrap; color: rgba(100,110,125,.07); pointer-events: none; user-select: none; z-index: 9999; }
+.rm-test-strip { background: #fff6e0; border-left: 6px solid #fab219; padding: 8px 14px; margin: 14px 0 0; border-radius: 6px; font-size: 14.5px; }
+
+/* Saisie rapide */
+.inv thead th { position: sticky; top: 0; z-index: 1; }
+.savebar { position: sticky; bottom: 0; z-index: 3; display: flex; gap: 14px; align-items: center; justify-content: center; background: rgba(255,255,255,.96); border-top: 1px solid var(--line); padding: 10px 14px; margin: 16px -16px 0; box-shadow: 0 -4px 14px rgba(23,32,44,.08); }
+.inv input { width: 80px; text-align: right; font: inherit; font-size: 15px; padding: 4px 6px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: var(--ink); }
+.inv input.changed { background: #fff7d6; border-color: #fab219; }
+.btn-save { font: inherit; font-weight: 600; padding: 11px 26px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(23,32,44,.22); transition: filter .15s, transform .05s; }
+.btn-save:hover { filter: brightness(1.12); } .btn-save:active { transform: translateY(1px); }
+.btn-undo { transition: box-shadow .15s, background .15s; } .btn-undo:hover { box-shadow: 0 2px 8px rgba(23,32,44,.18); }
+.sens button { transition: filter .15s; } .sens button:hover { filter: brightness(.96); }
+tbody tr:hover td { background: #f3f7fc; }
+tr.r:hover td { background: #f9e6e6; } tr.y:hover td { background: #fff3d9; }
+
+/* Charts */
+.ptabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+.ptab { font: inherit; cursor: pointer; border: 2px solid transparent; border-radius: 10px; padding: 8px 16px; background: #eceef2; color: inherit; text-align: left; }
+.ptab b { display: block; font-size: 26px; line-height: 1.1; } .ptab.r b { color: var(--red); } .ptab.y b { color: #b87f00; }
+.ptab.on { border-color: currentColor; background: #fff; }
+.plist { display: none; } .plist.on { display: block; } .plist .more { display: none; } .plist.all .more { display: grid; }
+.prow { display: grid; grid-template-columns: minmax(190px, 1.7fr) minmax(110px, 1.2fr) 56px minmax(240px, 1fr); gap: 12px; align-items: center; padding: 5px 6px; border-radius: 6px; text-decoration: none; color: inherit; }
+.prow:hover, .famrow:hover { background: #eef0f4; } .famrow { cursor: pointer; border-radius: 6px; }
+.pname { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pbar { position: relative; height: 16px; border-radius: 4px; background: #e4e6ea; }
+.pfill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px 0 0 4px; }
+.pseuil { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: #111; border-radius: 2px; }
+.pdes { position: absolute; top: -2px; bottom: -2px; border-left: 2px dashed #5a5a5a; }
+.pst { display: inline-block; padding: 0 8px; border-radius: 9px; background: #e3edf9; color: #1a4f8f; font-weight: 600; }
+.tile.clk { cursor: pointer; border: 2px solid transparent; } .tile.clk:hover { border-color: #b9c3d0; } .tile.clk.on { border-color: #2a78d6; background: #eef4fb; }
+tr.grp td { cursor: pointer; font-weight: 700; background: #eef1f5; padding: 9px 12px; user-select: none; } tr.grp .arr { display: inline-block; width: 1.2em; transition: transform .15s; } tr.grp.fold .arr { transform: rotate(-90deg); }
+.pnum { text-align: right; white-space: nowrap; } .pnote { font-size: 13.5px; opacity: .8; white-space: normal; }
+@media (max-width: 700px) { .prow { grid-template-columns: 1fr 70px; } .prow .pbar { grid-column: 1 / -1; order: 3; } .prow .pnote { grid-column: 1 / -1; order: 4; } }
+.charts { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.donutleg { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; margin-top: 10px; }
+svg text { font-family: var(--font-body); }
+.restock li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.restock { list-style: none; margin: 0; padding: 0; }
+.bar { display: grid; grid-template-columns: 120px 1fr 24px; gap: 8px; align-items: center; font-size: 14px; padding: 3px 0; }
+.bar .track { background: #eef0f3; border-radius: 4px; height: 14px; overflow: hidden; }
+.bar .fill { background: var(--blue); height: 100%; border-radius: 4px; }
+
+/* Captures */
+.shots { display: flex; flex-direction: column; gap: 30px; }
+.shot { display: flex; flex-direction: column; gap: 8px; }
+.shot a { display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.shot img { display: block; width: 100%; height: auto; }
+
+@media (max-width: 760px) {
+  .charts { grid-template-columns: minmax(0, 1fr); }
+  .brand small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="demo-note gutter" role="note"><b>Démonstration · données fictives</b> · version test, pas encore en production — les mouvements faits ici restent dans votre navigateur. <button type="button" id="reset">Remettre la démo à zéro</button></div>
+<header class="topbar gutter">
+  <div class="in">
+    <span class="brand">Stock outils<small>Démonstration</small></span>
+    <nav id="nav" aria-label="Pages"></nav>
+  </div>
+  <div class="in subrow"><nav id="subnav" aria-label="Sous-pages"></nav>
+  </div>
+</header>
+<div class="rm-test-wm" aria-hidden="true">VERSION TEST</div>
+<main class="gutter" id="view"></main>
+
+<script>
+(function () {
+  var NEAR = 1.5;
+  var MACHINES = ["Fraiseuse 1", "Fraiseuse 2", "Tour 1", "Tour 2"];
+  var INITIAL_TOOLS = [
+    ["0101", 8, "Fraise 2 tailles Ø6"], ["0102", 3, "Fraise 2 tailles Ø8"], ["0103", 12, "Fraise torique Ø10"], ["0104", 7, "Foret carbure Ø5"],
+    ["0105", 5, "Foret carbure Ø8"], ["0106", 2, "Plaquette CNMG"], ["0107", 11, "Plaquette DNMG"], ["0108", 6, "Taraud M6"],
+    ["0109", 4, "Taraud M8"], ["0110", 9, "Alésoir Ø10"], ["0111", 1, "Fraise à rainurer Ø12"], ["0112", 7, "Fraise boule Ø6"],
+    ["0113", 5, "Outil à fileter"], ["0114", 3, "Barre d'alésage"], ["0115", 10, "Foret à centrer"], ["0116", 6, "Fraise à chanfreiner"]
+  ];
+  var INITIAL_MOVES = [
+    ["2026-11-08T16:12:45", "0102", -1, "Sortie scan - Machine : Tour 1"],
+    ["2026-11-08T15:06:25", "0108", 1, "Entrée scan - Machine : Fraiseuse 1"],
+    ["2026-11-08T14:56:59", "0111", -1, "Sortie scan - Machine : Fraiseuse 2"],
+    ["2026-11-08T14:56:50", "0107", 2, "Entrée scan - Machine : Tour 2"],
+    ["2026-11-08T11:40:10", "0104", -1, "Sortie scan - Machine : Fraiseuse 1"],
+    ["2026-11-08T09:05:30", "0106", -1, "Sortie scan - Machine : Tour 1"]
+  ];
+  var PRICES = { "0101": 18.5, "0102": 42, "0103": 36, "0104": 12.8, "0105": 24.5, "0106": 7.2, "0107": 6.9, "0108": 9.4, "0109": 11.6, "0110": 58, "0111": 31, "0112": 15.3, "0113": 47.5, "0114": 89, "0115": 8.8, "0116": 14.2 };   // prix unitaires fictifs (€ HT)
+  var INFOS = { "0101": ["Fraises", "3001"], "0102": ["Fraises", "3002"], "0103": ["Fraises", "3003"], "0104": ["Forets", "2001"], "0105": ["Forets", "2002"],
+    "0106": ["Plaquettes", "1001"], "0107": ["Plaquettes", "1002"], "0108": ["Tarauds", "4001"], "0109": ["Tarauds", "4002"], "0110": ["Alésage", "4003"],
+    "0111": ["Fraises", "3004"], "0112": ["Fraises", "3005"], "0113": ["Filetage", "4004"], "0114": ["Alésage", "4005"], "0115": ["Forets", "2003"], "0116": ["Fraises", "3006"] };   // familles et emplacements fictifs
+  var KEY = "stock-outils-demo-v1";
+  // [jours en arrière, heure, outil, quantité, libellé] : sorties plus anciennes (fictives) pour le classement d'utilisation
+  var EXTRA_MOVES = [
+    [2, 10, "0103", -2, "Sortie OF 4821 - Machine : Fraiseuse 1"], [3, 14, "0105", -1, "Sortie scan - Machine : Tour 2"], [5, 9, "0103", -1, "Sortie scan - Machine : Fraiseuse 2"],
+    [6, 15, "0107", -3, "Sortie OF 4817 - Machine : Tour 1"], [9, 11, "0103", -2, "Sortie OF 4809 - Machine : Fraiseuse 1"], [12, 8, "0109", -1, "Sortie scan - Machine : Fraiseuse 2"],
+    [14, 13, "0107", -2, "Sortie OF 4802 - Machine : Tour 1"], [17, 10, "0105", -2, "Sortie OF 4795 - Machine : Tour 2"], [21, 16, "0103", -3, "Sortie OF 4788 - Machine : Fraiseuse 1"],
+    [24, 9, "0110", -1, "Sortie scan - Machine : Fraiseuse 2"], [28, 14, "0107", -2, "Sortie OF 4776 - Machine : Tour 1"], [33, 11, "0103", -2, "Sortie OF 4761 - Machine : Fraiseuse 2"],
+    [38, 15, "0105", -1, "Sortie scan - Machine : Tour 2"], [45, 10, "0108", -1, "Sortie scan - Machine : Fraiseuse 1"], [52, 9, "0103", -4, "Sortie OF 4722 - Machine : Fraiseuse 1"],
+    [58, 14, "0107", -2, "Sortie OF 4710 - Machine : Tour 1"], [66, 11, "0114", -1, "Sortie scan - Machine : Tour 2"], [74, 15, "0105", -2, "Sortie OF 4685 - Machine : Tour 2"],
+    [81, 10, "0103", -3, "Sortie OF 4660 - Machine : Fraiseuse 2"], [88, 9, "0116", -1, "Sortie scan - Machine : Fraiseuse 1"]
+  ];
+  // Ruptures fictives : [outil, début (jours en arrière), durée (heures) ou 0 si encore en cours, stock le plus bas]
+  var RUPT_SEED = [
+    ["0103", 42, 120, 1], ["0105", 35, 72, 0], ["0107", 27, 216, 1], ["0102", 21, 54, 2], ["0103", 13, 96, 0],
+    ["0109", 9, 36, 3], ["0111", 19, 144, 0], ["0102", 3, 0, 3], ["0106", 4, 0, 2], ["0111", 1.3, 0, 1], ["0114", 0.35, 0, 3]
+  ];
+  function isoFromMs(ms) { var d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 19); }
+  function seedRuptures() {
+    var now = Date.now();
+    return RUPT_SEED.map(function (r) {
+      var st = now - r[1] * 86400000;
+      return { ref: "OUT-" + r[0], start: isoFromMs(st), end: r[2] ? isoFromMs(st + r[2] * 3600000) : null, min: r[3], seuil: 4 };
+    });
+  }
+  function extraMoves() {
+    return EXTRA_MOVES.map(function (m) {
+      var d = new Date(); d.setDate(d.getDate() - m[0]); d.setHours(m[1], 0, 0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return { t: d.toISOString().slice(0, 19), ref: "OUT-" + m[2], qty: m[3], label: m[4], who: "admin" };
+    });
+  }
+
+  function fresh() {
+    return {
+      tools: INITIAL_TOOLS.map(function (t) { return { ref: "OUT-" + t[0], label: t[2], stock: t[1], seuil: 4, desired: 10, price: PRICES[t[0]] || 0, barcode: "", famille: (INFOS[t[0]] || ["", ""])[0], emplacement: (INFOS[t[0]] || ["", ""])[1] }; }),
+      moves: INITIAL_MOVES.map(function (m) { return { t: m[0], ref: "OUT-" + m[1], qty: m[2], label: m[3], who: "admin" }; }).concat(extraMoves()).sort(function (a, b) { return a.t < b.t ? 1 : -1; }),
+      rup: seedRuptures(),                                 // périodes « sous le seuil » (end vide = en cours)
+      status: {},                                          // suivi de réapprovisionnement : ref → { statut, note, t }
+      of: { no: "", sens: 1, machine: "", lines: [] }      // liste en cours du « Scan par OF »
+    };
+  }
+  var STATUTS = ["À décider", "Devis demandé", "Commandé - attente réception"];
+  var S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || !S.tools) { S = fresh(); }
+  if (!S.status) { S.status = {}; }
+  if (!S.rup) { S.rup = []; }
+  S.tools.forEach(function (t) { if (t.price === undefined) { t.price = PRICES[t.ref.slice(-4)] || 0; } if (t.barcode === undefined) { t.barcode = ""; } if (t.famille === undefined) { t.famille = (INFOS[t.ref.slice(-4)] || ["", ""])[0]; t.emplacement = (INFOS[t.ref.slice(-4)] || ["", ""])[1]; } });   // états enregistrés avant l'ajout des prix
+  if (!S.of) { S.of = { no: "", sens: 1, machine: "", lines: [] }; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var ofFlash = null, ofResult = null, ofUndoInfo = null, ofCands = null;   // Scan entrée / sortie (liste)
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  // Pagination commune de toutes les listes : 20 lignes par page, « ‹ Précédent 1 2 3 … Suivant › » sous la liste (même code que le module, v1.19.0).
+  // Tout se passe dans la page : la recherche et les filtres portent toujours sur toutes les lignes.
+  function rmPager(all, anchor, o) {
+    o = o || {};
+    var per = o.per || 20, unit = o.unit || "lignes", page = 1, list = all.slice(), disp = o.display || "";
+    if (o.key) { try { page = parseInt(sessionStorage.getItem("rmPg_" + o.key), 10) || 1; } catch (e) {} }
+    var nav = document.createElement("div");
+    nav.className = "rm-pager"; nav.setAttribute("role", "navigation"); nav.setAttribute("aria-label", "Pages de la liste");
+    anchor.parentNode.insertBefore(nav, anchor.nextSibling);
+    function nums(p, n) { var r = [], last = 0; for (var i = 1; i <= n; i++) { if (i === 1 || i === n || (i >= p - 2 && i <= p + 2)) { if (i - last > 1) { r.push(0); } r.push(i); last = i; } } return r; }
+    function b(p, txt, dis, on) { return '<button type="button" data-p="' + p + '"' + (dis ? " disabled" : "") + (on ? ' class="on" aria-current="page"' : "") + '>' + txt + '</button>'; }
+    function draw() {
+      var n = list.length, pages = Math.max(1, Math.ceil(n / per)), i;
+      page = Math.min(Math.max(1, page), pages);
+      if (o.key) { try { sessionStorage.setItem("rmPg_" + o.key, page); } catch (e) {} }
+      var a = (page - 1) * per, z = Math.min(n, a + per);
+      for (i = 0; i < all.length; i++) { all[i].style.display = "none"; }
+      for (i = a; i < z; i++) { list[i].style.display = disp; }
+      if (n <= per) { nav.style.display = "none"; nav.innerHTML = ""; return; }
+      nav.style.display = "";
+      var h = '<span class="rm-pg-info">' + (a + 1) + "–" + z + " sur " + n + " " + unit + "</span>" + b(page - 1, "‹ Précédent", page === 1);
+      nums(page, pages).forEach(function (p) { h += p ? b(p, p, false, p === page) : '<span class="rm-pg-gap">…</span>'; });
+      nav.innerHTML = h + b(page + 1, "Suivant ›", page === pages);
+    }
+    nav.addEventListener("click", function (ev) {
+      var t = ev.target.closest("button[data-p]");
+      if (!t || t.disabled || t.classList.contains("on")) { return; }
+      page = parseInt(t.getAttribute("data-p"), 10); draw();
+      var top = (o.top || anchor).getBoundingClientRect().top; if (top < 0) { (o.top || anchor).scrollIntoView({ block: "start" }); }
+    });
+    draw();
+    return { set: function (l, keep) { list = l; if (!keep) { page = 1; } draw(); }, page: function () { return page; },
+      show: function (el) { var i = list.indexOf(el); if (i < 0) { list = all.slice(); i = all.indexOf(el); } if (i >= 0) { page = Math.floor(i / per) + 1; draw(); } } };
+  }
+  function pgReset(key) { try { sessionStorage.removeItem("rmPg_" + key); } catch (e) {} }
+  // Tableaux sans filtre (ruptures, historique, aperçu de l'import) : <tbody data-pg="clé|unité">
+  function autoPagers() {
+    document.querySelectorAll("tbody[data-pg]").forEach(function (tb) {
+      var a = tb.getAttribute("data-pg").split("|"), rows = Array.prototype.slice.call(tb.rows);
+      rmPager(rows, tb.closest(".tablewrap") || tb.closest("table"), { per: 20, unit: a[1] || "lignes", key: a[0] });
+    });
+  }
+  function tool(ref) { for (var i = 0; i < S.tools.length; i++) { if (S.tools[i].ref === ref) { return S.tools[i]; } } return null; }
+  function status(t) {
+    if (t.seuil <= 0) { return { k: "n", ic: "–", txt: "Pas de seuil" }; }
+    if (t.stock < t.seuil) { return { k: "r", ic: "▼", txt: "Sous le seuil" }; }
+    if (t.stock <= t.seuil * NEAR) { return { k: "y", ic: "▲", txt: "Proche du seuil" }; }
+    return { k: "g", ic: "✓", txt: "OK" };
+  }
+  // Un outil revenu au-dessus de son seuil n'a plus de suivi de commande (comme rmeca_clean_statuts du module)
+  function cleanStatus() {
+    Object.keys(S.status).forEach(function (ref) { var t = tool(ref); if (!t || t.seuil <= 0 || t.stock > t.seuil * 1.5) { delete S.status[ref]; } });
+    syncRup();
+  }
+  // Ouvre une période quand un outil passe sous son seuil, la ferme quand il remonte ; moins de 10 min = correction, supprimée
+  function syncRup() {
+    var now = Date.now();
+    S.tools.forEach(function (t) {
+      var under = t.seuil > 0 && t.stock < t.seuil, open = null;
+      S.rup.forEach(function (r) { if (r.ref === t.ref && !r.end) { open = r; } });
+      if (under && !open) { S.rup.push({ ref: t.ref, start: isoFromMs(now), end: null, min: t.stock, seuil: t.seuil }); }
+      else if (under && open) { open.min = Math.min(open.min, t.stock); }
+      else if (!under && open) {
+        if (now - new Date(open.start).getTime() < 600000) { S.rup.splice(S.rup.indexOf(open), 1); } else { open.end = isoFromMs(now); }
+      }
+    });
+  }
+  function fmtDur(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    if (s < 3600) { return Math.max(1, Math.round(s / 60)) + " min"; }
+    if (s < 86400) { var m = Math.floor((s % 3600) / 60); return Math.floor(s / 3600) + " h " + (m < 10 ? "0" : "") + m; }
+    return Math.floor(s / 86400) + " j " + Math.floor((s % 86400) / 3600) + " h";
+  }
+  function fmtEur(n) { return Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"; }
+  function openSince(ref) { var o = null; S.rup.forEach(function (r) { if (r.ref === ref && !r.end) { o = r; } }); return o; }
+  var ORDER = { r: 0, y: 1, g: 2, n: 3 };
+  function sorted() { return S.tools.slice().sort(function (a, b) { return ORDER[status(a).k] - ORDER[status(b).k] || a.ref.localeCompare(b.ref); }); }
+  function fmtDate(iso) { var d = new Date(iso); function p(n) { return (n < 10 ? "0" : "") + n; } return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes()); }
+  function nowIso() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 19); }
+
+  function beep(ok) {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      (ok ? [[660, 0, .09], [990, .1, .12]] : [[220, 0, .25]]).forEach(function (n) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = n[0]; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(.12, ctx.currentTime + n[1]);
+        o.start(ctx.currentTime + n[1]); o.stop(ctx.currentTime + n[1] + n[2]);
+      });
+    } catch (e) {}
+  }
+
+  // Même logique que scan.php : 1 scan = 1 outil, sortie refusée si stock insuffisant
+  function move(t, qty, sens, machine, prefix) {
+    if (sens === 1 && qty > t.stock) {
+      return { ok: false, msg: "Sortie refusée : il ne reste que " + t.stock + " × " + t.ref + " en stock." };
+    }
+    var before = t.stock;
+    t.stock += sens === 1 ? -qty : qty;
+    var label = (prefix || (sens === 1 ? "Sortie scan" : "Entrée scan")) + (machine ? " - Machine : " + machine : "");
+    S.moves.unshift({ t: nowIso(), ref: t.ref, qty: sens === 1 ? -qty : qty, label: label, who: "vous (démo)" });
+    cleanStatus();
+    save();
+    var r = { ok: true, msg: (sens === 1 ? "Sortie" : "Entrée") + " de " + qty + " × " + t.ref + (machine && sens === 1 ? " pour " + machine : "") + " enregistrée.", detail: "Stock : " + before + " → " + t.stock };
+    if (t.seuil > 0 && t.stock < t.seuil) { r.warn = t.ref + " est sous son seuil (" + t.stock + " / mini " + t.seuil + ") : réapprovisionnement à prévoir."; }
+    return r;
+  }
+
+  /* ---------- Vues ---------- */
+  function clockTxt() { var n = new Date(); return { h: n.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), d: n.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) }; }
+  setInterval(function () { var h = document.getElementById("clockh"), d = document.getElementById("clockd"); if (h && d) { var c = clockTxt(); h.textContent = c.h; d.textContent = c.d; } }, 20000);
+  function vAccueil() {
+    var today = nowIso().slice(0, 10), out = 0, inn = 0;
+    S.moves.forEach(function (m) {
+      if (m.t.slice(0, 10) === today) { if (m.qty < 0) { out -= m.qty; } else { inn += m.qty; } }
+    });
+    var under = S.tools.filter(function (t) { return status(t).k === "r"; }).length;
+    var restock = sorted().filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
+    // Répartition des outils par état et ruptures en cours (mêmes chiffres que les widgets de l'outil)
+    var cnt = { r: 0, y: 0, g: 0, n: 0 };
+    S.tools.forEach(function (t) { cnt[status(t).k]++; });
+    var open = S.rup.filter(function (r) { return !r.end; }).sort(function (x, y) { return new Date(x.start) - new Date(y.start); });
+    var lim = Date.now() - 90 * 86400000, done = S.rup.filter(function (r) { return r.end && new Date(r.end).getTime() >= lim; });
+    var avg = done.length ? done.reduce(function (a, r) { return a + (new Date(r.end) - new Date(r.start)); }, 0) / done.length : 0;
+
+    return '<h1>Accueil</h1>' +
+      '<p class="intro">Démonstration de suivi des outils coupants pour un atelier d\'usinage. Chaque sortie ou retour d\'outil est scanné ; le stock et les alertes de seuil se mettent à jour tout seuls. Essayez la page <a href="#scan">Scan</a> : le tableau des seuils change en direct.</p>' +
+      '<div class="grid2">' +
+        '<div class="box"><div class="hd">Stock outils</div><div class="bd"><div class="shortcuts">' +
+          '<a class="main" href="#scan"><b>Scanner</b><span>Entrée ou sortie d\'outils</span></a>' +
+          '<a href="#seuils"><b>Tableau des seuils</b><span>Graphiques et détail</span></a>' +
+          '<a href="#ruptures"><b>Ruptures</b><span>Durée sous le seuil</span></a>' +
+          '<a href="#utilisation"><b>Utilisation</b><span>Plus et moins utilisés</span></a>' +
+          '<a href="#etiquettes"><b>Étiquettes</b><span>Codes-barres des bacs</span></a>' +
+          '<a href="#excel"><b>Excel</b><span>Importer / exporter</span></a>' +
+          '<a href="#saisie"><b>Saisie rapide</b><span>Stock et seuils en masse</span></a>' +
+          '<a href="#historique"><b>Historique</b><span>Tous les mouvements</span></a>' +
+        '</div></div></div>' +
+        '<div class="box"><div class="hd">Aujourd\'hui</div><div class="bd"><div class="tiles">' +
+          '<div class="tile"><b>' + out + '</b><span>outil(s) sorti(s)</span></div>' +
+          '<div class="tile"><b>' + inn + '</b><span>outil(s) entré(s)</span></div>' +
+          '<a class="tile" href="#seuils" style="text-decoration:none;color:inherit"><b>' + (under ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + under + '</b><span>sous le seuil</span></a>' +
+        '</div></div></div>' +
+        '<div class="box"><div class="hd">Outils à réapprovisionner (' + restock.length + ')</div><div class="bd"><ul class="restock">' +
+          (restock.length ? restock.map(function (t) { var s = status(t), st = S.status[t.ref]; return '<li><span>' + esc(t.ref) + ' <span class="muted">' + esc(t.label) + '</span>' + (st ? '<br><b style="font-size:13px">' + esc(st.statut) + '</b>' : '') + '</span><span><span class="pill ' + s.k + '">' + s.ic + ' ' + t.stock + ' / ' + t.seuil + '</span></span></li>'; }).join("") : '<li class="muted">Aucun outil sous ou proche du seuil.</li>') +
+        '</ul></div></div>' +
+        '<div class="box"><div class="hd">Répartition des outils</div><div class="bd"><a href="#seuils" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:18px;flex-wrap:wrap">' + donut(cnt, S.tools.length) +
+          '<div class="donutleg"><span><span class="pill r">▼ ' + cnt.r + '</span> Sous le seuil</span><span><span class="pill y">▲ ' + cnt.y + '</span> Proche du seuil</span><span><span class="pill g">✓ ' + cnt.g + '</span> OK</span><span><span class="pill n">– ' + cnt.n + '</span> Pas de seuil</span></div></a></div></div>' +
+        '<div class="box"><div class="hd">Date et heure</div><div class="bd" style="text-align:center;padding:14px 8px"><div id="clockh" style="font-size:44px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums">' + clockTxt().h + '</div><div id="clockd" style="font-size:16px;color:var(--muted);margin-top:4px">' + clockTxt().d + '</div></div></div>' +
+        '<div class="box"><div class="hd">Ruptures en cours</div><div class="bd"><a href="#ruptures" class="tiles" style="text-decoration:none;color:inherit">' +
+          '<div class="tile"><b>' + (open.length ? '<span style="color:var(--red)">▼</span> ' : '<span style="color:var(--green)">✓</span> ') + open.length + '</b><span>outil(s) sous le seuil maintenant</span></div>' +
+          '<div class="tile"><b>' + (open.length ? fmtDur(Date.now() - new Date(open[0].start).getTime()) : "—") + '</b><span>' + (open.length ? 'la plus longue : ' + esc(open[0].ref) : 'aucune rupture en cours') + '</span></div>' +
+          '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (90 j)' + (done.length ? ', ' + done.length + ' rupture(s)' : '') + '</span></div>' +
+        '</a></div></div>' +
+        '<div class="box"><div class="hd">Suivi du réapprovisionnement</div><div class="bd">' + suiviWidget() + '</div></div>' +
+      '</div>';
+  }
+  function suiviWidget() {
+    var al = S.tools.filter(function (t) { var k = status(t).k; return k === "r" || k === "y"; });
+    if (!al.length) { return '<div style="color:var(--green);padding:6px 2px">✓ Aucun outil à réapprovisionner</div>'; }
+    var nos = 0, tr = {}, budget = 0, np = 0;
+    al.forEach(function (t) {
+      var st = S.status[t.ref];
+      if (st) { tr[st.statut] = (tr[st.statut] || 0) + 1; } else if (status(t).k === "r") { nos++; }
+      var q = Math.max(0, t.desired - t.stock); if (q > 0) { if (t.price > 0) { budget += q * t.price; } else { np++; } }
+    });
+    var tile = function (n, label, color, key) { return '<a href="#seuils" data-sfgo="' + esc(key) + '" title="Voir ces outils dans le tableau des seuils" style="text-decoration:none;color:inherit"><div class="tile" style="height:100%;box-sizing:border-box"><b style="color:' + color + '">' + n + '</b><span>' + label + '</span></div></a>'; };
+    return '<div class="tiles">' + tile(nos, '▼ sous le seuil, <strong>sans suivi</strong>', nos ? "var(--red)" : "var(--green)", "__none") +
+      STATUTS.map(function (n) { return tile(tr[n] || 0, esc(n), "inherit", n); }).join("") + '</div>' +
+      '<div class="tile" style="margin-top:8px;background:#e8f0fb" title="Quantité à commander x prix unitaire, pour les outils sous ou proches du seuil"><b style="font-size:24px">' + fmtEur(budget) + '</b><span>budget de réapprovisionnement estimé' + (np ? ' · ' + np + ' outil(s) sans prix non comptés' : '') + '</span></div>';
+  }
+  document.addEventListener("click", function (e) {   // tuile du widget : ouvre le tableau des seuils déjà filtré sur ces outils
+    var a = e.target.closest ? e.target.closest("[data-sfgo]") : null; if (!a) { return; }
+    sf.suivi = a.getAttribute("data-sfgo");
+    setTimeout(function () { var d = document.getElementById("sfdetail"); if (d) { d.scrollIntoView({ behavior: "smooth" }); } }, 120);
+  });
+
+  function donut(counts, total) {
+    var R = 58, C = 2 * Math.PI * R, off = 0, segs = "";
+    var parts = [["r", "var(--red)"], ["y", "var(--yellow)"], ["g", "var(--green)"], ["n", "var(--grey)"]];
+    parts.forEach(function (p) {
+      var n = counts[p[0]]; if (!n) { return; }
+      var len = n / total * C, gap = total > n ? 2 : 0;
+      segs += '<circle cx="80" cy="80" r="' + R + '" fill="none" stroke="' + p[1] + '" stroke-width="24" stroke-dasharray="' + Math.max(len - gap, 0.1) + ' ' + (C - Math.max(len - gap, 0.1)) + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 80 80)"><title>' + n + ' outil(s)</title></circle>';
+      off += len;
+    });
+    return '<svg viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Répartition des outils par état">' + segs +
+      '<text x="80" y="82" text-anchor="middle" font-size="30" font-weight="700" fill="#17202c">' + total + '</text><text x="80" y="102" text-anchor="middle" font-size="12" fill="#5d6877">outils</text></svg>';
+  }
+
+  // À commander en priorité : deux listes (sous le seuil / proches), les plus urgentes d'abord (stock bas par rapport au seuil, puis rupture la plus ancienne).
+  // Une ligne par outil ; chaque barre est à l'échelle de son propre outil. 15 lignes visibles, 30 en dépliant ; le reste est dans le tableau détaillé.
+  var prioTab = null;
+  function usage30() {   // pièces sorties sur 30 jours par outil (inventaires ignorés, sorties annulées retranchées)
+    var since = new Date(); since.setDate(since.getDate() - 30); since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    var iso = since.toISOString().slice(0, 19), u = {};
+    S.moves.forEach(function (m) {
+      if (m.t < iso) { return; }
+      if (m.qty < 0 && m.label.indexOf("Annulation") !== 0 && m.label.indexOf("Inventaire") !== 0) { u[m.ref] = (u[m.ref] || 0) - m.qty; }
+      if (m.qty > 0 && m.label.indexOf("Annulation sortie") === 0) { u[m.ref] = (u[m.ref] || 0) - m.qty; }
+    });
+    return u;
+  }
+  function isOrdered(ref) { var st = S.status[ref]; return !!st && /^command/i.test(st.statut); }
+  function prioCard(list) {
+    var P = { r: [], y: [] }, U = usage30(), nOrd = { r: 0, y: 0 };
+    list.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { P[k].push(t); } });
+    ["r", "y"].forEach(function (k) {
+      P[k].sort(function (a, b) {
+        var ra = a.stock / Math.max(1, a.seuil), rb = b.stock / Math.max(1, b.seuil), oa = openSince(a.ref), ob = openSince(b.ref);
+        // 1) pas déjà commandé, 2) stock le plus bas par rapport au seuil, 3) le plus utilisé sur 30 jours, 4) rupture la plus ancienne
+        return (isOrdered(a.ref) ? 1 : 0) - (isOrdered(b.ref) ? 1 : 0) || ra - rb || (U[b.ref] || 0) - (U[a.ref] || 0) || (oa ? new Date(oa.start).getTime() : Infinity) - (ob ? new Date(ob.start).getTime() : Infinity) || (a.ref < b.ref ? -1 : 1);
+      });
+    });
+    var tab = prioTab || (P.r.length ? "r" : "y"), col = { r: "var(--red)", y: "var(--yellow)" };
+    // Outils sous le seuil, TOUS, dans l'ordre de priorité ci-dessus (v1.18.0) : 20 par page (v1.19.0 ; avant : 15 visibles et « Afficher les N autres »).
+    // Avant : « les 15 plus tendus » triés par écart en pièces seulement (beaucoup d'ex aequo, classés par référence).
+    var T = P.r, NF = 20;
+    var pkey = function (t) { var o = openSince(t.ref); return (isOrdered(t.ref) ? 1 : 0) + "|" + (t.stock / Math.max(1, t.seuil)).toFixed(4) + "|" + (U[t.ref] || 0) + "|" + (o ? o.start : ""); };
+    var ties = T.length > NF ? T.filter(function (t) { return pkey(t) === pkey(T[NF - 1]); }).length : 0;
+    var histo = '<div style="margin:0 0 16px"><b>' + (T.length ? T.length + " outil" + (T.length > 1 ? "s" : "") + " sous le seuil — les plus urgents d&#39;abord" : "Outils sous le seuil") + '</b><p class="muted" style="margin:2px 0 8px;font-size:13px">Ordre : pas encore commandés d&#39;abord, puis le stock le plus bas par rapport au seuil, puis les plus utilisés sur 30 jours, puis la rupture la plus ancienne. Barre = part du stock de sécurité qui manque.</p>' +
+      (T.length ? '<div id="tllist">' + T.map(function (t, i) {
+        var gap = t.seuil - t.stock, o = openSince(t.ref), st = S.status[t.ref] ? S.status[t.ref].statut : "", meta = [];
+        if (U[t.ref]) { meta.push(U[t.ref] + " sortie" + (U[t.ref] > 1 ? "s" : "") + "/30 j"); }
+        if (o) { meta.push("depuis " + fmtDur(Date.now() - new Date(o.start).getTime())); }
+        return '<a href="#seuils" class="tl-item" title="' + esc(t.ref + " " + t.label + " — stock " + t.stock + " / seuil " + t.seuil + " : il manque " + gap + (meta.length ? " · " + meta.join(" · ") : "") + (st ? " · suivi : " + st : "")) + '" style="display:flex;align-items:center;gap:8px;margin:3px 0;text-decoration:none;color:inherit">' +
+          '<span class="muted" style="flex:0 0 2.4em;text-align:right">' + (i + 1) + '</span>' +
+          '<span style="flex:0 0 38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></span>' +
+          '<span style="flex:1 1 auto;height:14px;background:rgba(138,138,134,.15);border-radius:3px;overflow:hidden"><i style="display:block;height:100%;width:' + (Math.min(1, gap / Math.max(1, t.seuil)) * 100).toFixed(1) + '%;background:var(--red)"></i></span>' +
+          '<span style="flex:0 0 auto;min-width:92px;text-align:right;font-size:13px"><b style="color:var(--red)">−' + gap + '</b> <span class="muted">(' + t.stock + ' / ' + t.seuil + ')</span>' +
+          (meta.length || st ? '<br><span class="muted" style="font-size:12px">' + esc(meta.join(" · ")) + '</span>' + (st ? ' <b style="color:#1a4f8f">' + esc(st) + '</b>' : '') : '') + '</span></a>';
+      }).join("") + '</div>' : '<p class="muted">Aucun outil sous son stock de sécurité.</p>') +
+      (ties > 1 ? '<p class="muted" style="margin:6px 0 0;font-size:13px">ⓘ ' + ties + ' outils sont à égalité (même stock par rapport au seuil, même consommation, même début de rupture) : ils sont affichés par référence. Le classement se précisera avec les sorties enregistrées.</p>' : '') +
+      '</div>';
+    var h = '<div class="box"><div class="hd">À commander en priorité</div><div class="bd">' +
+      '<p style="margin:0 0 8px"><button type="button" class="btn-undo" id="tobuycsv">⬇ Liste à commander (CSV)</button></p>' + histo +
+      '<p style="margin:0"><b style="color:var(--red)">' + P.r.length + '</b> ▼ sous le seuil · <b style="color:#b87f00">' + P.y.length + '</b> ▲ proches du seuil · <span class="muted">détail dans le tableau plus bas</span></p></div></div>';
+    return h;
+  }
+  function famBars(list) {
+    var fb = {}, names = [];
+    list.forEach(function (t) { var f = t.famille || "(sans famille)"; if (!fb[f]) { fb[f] = { r: 0, y: 0, g: 0, n: 0 }; names.push(f); } fb[f][status(t).k]++; });
+    if (names.length < 2 && names[0] === "(sans famille)") { return ""; }
+    var tot = function (f) { return fb[f].r + fb[f].y + fb[f].g + fb[f].n; };
+    names.sort(function (a, b) { return fb[b].r - fb[a].r || tot(b) - tot(a); });
+    var mx = 1; names.forEach(function (f) { mx = Math.max(mx, tot(f)); });
+    var col = { r: "var(--red)", y: "var(--yellow)", g: "var(--green)", n: "var(--grey)" };
+    return '<div class="box" style="margin:16px 0"><div class="hd">État des outils par famille <span class="muted">(cliquez une famille pour voir ses outils)</span></div><div class="bd">' + names.map(function (f) {
+      var n = tot(f);
+      return '<div class="famrow" data-f="' + (f === "(sans famille)" ? "" : esc(f.toLowerCase())) + '" title="Voir ces outils dans le tableau détaillé" style="display:grid;grid-template-columns:130px 1fr 150px;gap:10px;align-items:center;padding:4px 6px"><b>' + esc(f) + '</b><div style="width:' + Math.round(n / mx * 100) + '%;min-width:30px;display:flex;height:20px;border-radius:5px;overflow:hidden;background:#eceef2">' +
+        ["r", "y", "g", "n"].map(function (k) { return fb[f][k] ? '<div title="' + fb[f][k] + ' outil(s)" style="width:' + (fb[f][k] / n * 100) + '%;background:' + col[k] + '"></div>' : ""; }).join("") +
+        '</div><span class="muted">' + n + ' outil(s)' + (fb[f].r ? ' · <b style="color:var(--red)">' + fb[f].r + ' ▼</b>' : '') + '</span></div>';
+    }).join("") + '</div></div>';
+  }
+
+  function vSeuils() {
+    var list = sorted(), counts = { r: 0, y: 0, g: 0, n: 0 };
+    list.forEach(function (t) { counts[status(t).k]++; });
+    var h = '<h1>Tableau des seuils</h1><div class="charts">' +
+      '<div class="box"><div class="hd">Répartition des outils</div><div class="bd">' + donut(counts, list.length) +
+        '<div class="donutleg">' +
+          '<span><span class="pill r">▼ ' + counts.r + '</span> Sous le seuil</span>' +
+          '<span><span class="pill y">▲ ' + counts.y + '</span> Proche du seuil</span>' +
+          '<span><span class="pill g">✓ ' + counts.g + '</span> OK</span>' +
+          '<span><span class="pill n">– ' + counts.n + '</span> Pas de seuil</span>' +
+        '</div></div></div>' +
+      prioCard(list) + '</div>' + famBars(list);
+    // Résumé du suivi de réapprovisionnement : combien d'outils pour chaque état
+    var tracked = {}, nostatus = 0;
+    list.forEach(function (t) {
+      var k = status(t).k;
+      if (k === "r" || k === "y") { var st = S.status[t.ref]; if (st) { tracked[st.statut] = (tracked[st.statut] || 0) + 1; } else if (k === "r") { nostatus++; } }
+    });
+    var budget = 0, noprice = 0;
+    list.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { var q = Math.max(0, t.desired - t.stock); if (q > 0) { if (t.price > 0) { budget += q * t.price; } else { noprice++; } } } });
+    if (counts.r + counts.y > 0) {
+      h += '<h2>Suivi du réapprovisionnement</h2><div class="tiles">' +
+        '<div class="tile" title="Quantité à commander x prix unitaire, pour les outils sous ou proches du seuil"><b>' + fmtEur(budget) + '</b><span>budget de réapprovisionnement estimé' + (noprice ? '<br>' + noprice + ' outil(s) sans prix non comptés' : '') + '</span></div>' +
+        '<div class="tile clk' + (sf.suivi === "__none" ? " on" : "") + '" data-sfsuivi="__none" title="Cliquer pour filtrer la liste détaillée"><b style="color:var(--red)">' + nostatus + '</b><span>▼ sous le seuil, <strong>sans suivi</strong></span></div>' +
+        STATUTS.map(function (n) { return '<div class="tile clk' + (sf.suivi === n ? " on" : "") + '" data-sfsuivi="' + esc(n) + '" title="Cliquer pour filtrer la liste détaillée"><b>' + (tracked[n] || 0) + '</b><span>' + esc(n) + '</span></div>'; }).join("") + '</div>';
+    }
+    function suiviCell(t, k) {
+      if (k !== "r" && k !== "y") { return ""; }
+      var st = S.status[t.ref];
+      return '<select data-st="' + esc(t.ref) + '" aria-label="Suivi de ' + esc(t.ref) + '" style="min-width:0;width:178px;height:34px;font-size:14px"><option value="">' + (k === "r" ? "— sans suivi —" : "— pas encore —") + '</option>' +
+        STATUTS.map(function (n) { return '<option' + (st && st.statut === n ? " selected" : "") + '>' + esc(n) + '</option>'; }).join("") + '</select> ' +
+        '<input type="text" data-note="' + esc(t.ref) + '" maxlength="255" placeholder="Note (fournisseur, date…)" value="' + esc(st ? st.note : "") + '" style="width:130px;height:34px;font:inherit;font-size:14px;padding:0 8px;border:1px solid #c9cfd8;border-radius:8px">' +
+        (st ? '<div class="muted" style="font-size:12.5px">mis à jour le ' + fmtDate(st.t) + '</div>' : "");
+    }
+    h += '<div class="box"><div class="hd" id="sfdetail">Détail</div>' + seuilControls() + '<div class="tablewrap"><table><thead><tr><th>État</th><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">À commander</th><th class="num">Prix unit.</th><th class="num">Coût à commander</th><th>Sous le seuil depuis</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody>' +
+      (function () { var lastk = ""; return list.map(function (t) { var s = status(t), cmd = (s.k === "r" || s.k === "y") ? Math.max(t.desired - t.stock, 0) : ""; var g = ""; if (s.k !== lastk) { lastk = s.k; g = '<tr class="grp" data-g="' + s.k + '"><td colspan="13"><span class="arr">▼</span> ' + s.ic + ' ' + s.txt + ' <span class="muted">(' + counts[s.k] + ')</span> <span class="muted" style="font-weight:400;font-size:13px">— cliquer pour réduire ou déplier</span></td></tr>'; } return g + '<tr class="' + s.k + ' rmrow" data-state="' + s.k + '" data-suivi="' + esc((S.status[t.ref] || {}).statut || "") + '" data-fam="' + esc((t.famille || "").toLowerCase()) + '" data-txt="' + esc((t.ref + " " + t.label + " " + (t.famille || "") + " " + (t.emplacement || "")).toLowerCase()) + '"><td><span class="pill ' + s.k + '">' + s.ic + ' ' + s.txt + '</span></td><td>' + esc(t.ref) + ' <a href="#etiquettes" class="etqone" data-ref="' + esc(t.ref) + '" title="Imprimer le code-barres de cet outil" style="text-decoration:none">🖨</a></td><td>' + esc(t.label) + '</td><td>' + (t.famille ? esc(t.famille) : '<span class="muted">—</span>') + '</td><td>' + (t.emplacement ? esc(t.emplacement) : '<span class="muted">—</span>') + '</td><td class="num"><b>' + t.stock + '</b></td><td class="num">' + t.seuil + '</td><td class="num">' + t.desired + '</td><td class="num"><b>' + cmd + '</b></td><td class="num">' + (t.price > 0 ? fmtEur(t.price) : '<span class="muted">—</span>') + '</td><td class="num"><b>' + (cmd && t.price > 0 ? fmtEur(cmd * t.price) : "") + '</b></td><td>' + (function () { var o = s.k === "r" ? openSince(t.ref) : null; return o ? '<b>' + fmtDur(Date.now() - new Date(o.start).getTime()) + '</b><div class="muted" style="font-size:12.5px">depuis le ' + fmtDate(o.start).slice(0, 10) + '</div>' : ""; })() + '</td><td>' + suiviCell(t, s.k) + '</td></tr>'; }).join(""); })() +
+      '</tbody></table></div></div><p class="muted" style="font-size:13.5px">Rouge : stock sous le seuil mini. Jaune : jusqu\'à 50 % au-dessus du seuil. « À commander » = stock désiré − stock.</p>';
+    return h;
+  }
+
+  /* ---------- Scan par OF : on scanne tous les outils, on ajuste les quantités, on valide d'un coup (comme of.php) ---------- */
+  function ofRead() {   // reprend à l'écran le n° d'OF, la machine et les quantités (sinon un scan effacerait une quantité modifiée)
+    var no = document.getElementById("ofno"), mc = document.getElementById("ofmachine");
+    if (no) { S.of.no = no.value.replace(/[^A-Za-z0-9 _\-\/\.]/g, "").slice(0, 40); }
+    if (mc) { S.of.machine = mc.value; }
+    document.querySelectorAll("[data-ofqty]").forEach(function (i) {
+      S.of.lines.forEach(function (l) { if (l.ref === i.getAttribute("data-ofqty")) { var q = parseInt(i.value, 10); l.qty = q > 0 ? Math.min(q, 999) : 1; } });
+    });
+  }
+  function ofAdd(code) {
+    ofRead(); ofCands = null; ofResult = null; ofFlash = null;
+    code = String(code).trim().toUpperCase();
+    if (!code) { return; }
+    var t = tool(code);
+    if (!t && code.length >= 2) {
+      var m = S.tools.filter(function (x) { return x.ref.slice(-code.length) === code; });
+      if (m.length === 1) { t = m[0]; } else if (m.length > 1) { ofCands = { code: code, list: m }; render(); return; }
+    }
+    if (!t) { ofFlash = { ok: false, msg: "Code inconnu : « " + code + " ». Vérifiez l'étiquette ou tapez la référence de l'outil." }; beep(false); render(); return; }
+    var line = null;
+    S.of.lines = S.of.lines.filter(function (l) { if (l.ref === t.ref) { line = l; return false; } return true; });
+    if (line) { line.qty = Math.min(999, line.qty + 1); } else { line = { ref: t.ref, label: t.label, qty: 1 }; }
+    S.of.lines.unshift(line);   // le dernier outil scanné passe en tête de liste
+    ofFlash = { ok: true, msg: t.ref + " ajouté (quantité : " + line.qty + ")" };
+    ofUndoInfo = null; save(); beep(true); render();
+  }
+  function ofValidate() {
+    ofRead(); ofFlash = null; ofCands = null;
+    var o = S.of, problems = [];
+    if (!o.lines.length) { problems.push("La liste est vide : scannez au moins un outil."); }
+    if (o.sens === 1) { o.lines.forEach(function (l) { var t = tool(l.ref); if (l.qty > t.stock) { problems.push(l.ref + " : il ne reste que " + t.stock + " en stock (demandé : " + l.qty + ")."); } }); }
+    if (problems.length) { ofResult = { ok: false, msg: "Rien n'a été enregistré.", list: problems }; beep(false); render(); return; }
+    var total = 0, warn = [], prefix = (o.sens === 1 ? "Sortie" : "Entrée") + (o.no ? " OF " + o.no : " scan");
+    o.lines.forEach(function (l) {
+      total += l.qty;
+      var t = tool(l.ref); move(t, l.qty, o.sens, o.machine, prefix);
+      if (o.sens === 1 && t.seuil > 0 && t.stock < t.seuil) { warn.push(t.ref + " est sous son seuil (" + t.stock + " / mini " + t.seuil + ")."); }
+    });
+    ofUndoInfo = { no: o.no, sens: o.sens, machine: o.machine, lines: o.lines.map(function (l) { return { ref: l.ref, qty: l.qty }; }) };
+    ofResult = { ok: true, msg: (o.sens === 1 ? "Sortie" : "Entrée") + " enregistrée" + (o.no ? " pour l'OF " + o.no : "") + " : " + o.lines.length + " outil(s), " + total + " pièce(s).", warn: warn, undo: true };
+    o.lines = []; o.no = ""; save(); beep(true); render();
+  }
+  function ofUndo() {
+    var u = ofUndoInfo; ofUndoInfo = null; ofFlash = null;
+    if (!u) { ofResult = { ok: false, msg: "Rien à annuler (déjà annulé ou trop ancien)." }; render(); return; }
+    var rev = u.sens === 1 ? 0 : 1, problems = [];
+    if (rev === 1) { u.lines.forEach(function (l) { var t = tool(l.ref); if (l.qty > t.stock) { problems.push(l.ref + " : il ne reste que " + t.stock + " en stock (à retirer : " + l.qty + ")."); } }); }
+    if (problems.length) { ofResult = { ok: false, msg: "Annulation impossible, rien n'a été modifié.", list: problems }; beep(false); render(); return; }
+    u.lines.forEach(function (l) { move(tool(l.ref), l.qty, rev, u.machine, "Annulation " + (u.sens === 1 ? "sortie" : "entrée") + (u.no ? " OF " + u.no : " scan")); });
+    ofResult = { ok: true, msg: (u.no ? "OF " + u.no : "Mouvement") + " annulé : " + (u.sens === 1 ? "sortie" : "entrée") + " de " + u.lines.length + " outil(s) corrigée." };
+    beep(true); render();
+  }
+
+  function vOf() {
+    var o = S.of, out = o.sens === 1, pieces = 0, h = '<h1>Scan entrée / sortie</h1><div class="scanwrap" style="max-width:900px">';
+    o.lines.forEach(function (l) { pieces += l.qty; });
+    function ul(a) { return a && a.length ? '<ul style="margin:6px 0 0 18px;padding:0">' + a.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join("") + '</ul>' : ""; }
+    if (ofResult) {
+      h += '<div class="banner ' + (ofResult.ok ? "ok" : "ko") + '" role="status"><span class="ic">' + (ofResult.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(ofResult.msg) + '</b>' + ul(ofResult.list) + '</div>' +
+        (ofResult.undo && ofUndoInfo ? '<button type="button" class="btn-undo" id="ofundo">↶ Annuler ce mouvement</button>' : '') + '</div>';
+      if (ofResult.warn && ofResult.warn.length) { h += '<div class="banner warn"><span class="ic">▲</span><div class="grow"><b>Réapprovisionnement à prévoir :</b>' + ul(ofResult.warn) + '</div></div>'; }
+    }
+    if (ofFlash) { h += '<div class="banner ' + (ofFlash.ok ? "ok" : "ko") + '" role="status"><span class="ic">' + (ofFlash.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(ofFlash.msg) + '</b></div></div>'; }
+    h += '<form id="ofform" autocomplete="off">' +
+      '<input type="submit" value="OK" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
+      '<div class="row" style="justify-content:flex-start;margin-bottom:14px;gap:16px">' +
+        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">N° d\'OF (facultatif)<input type="text" id="ofno" maxlength="40" placeholder="ex. 12345" value="' + esc(o.no) + '" style="font:inherit;font-size:16px;height:42px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
+        '<span class="row sens"><button type="button" class="o' + (out ? " on" : "") + '" data-ofsens="1">⬆ Sortie</button><button type="button" class="i' + (!out ? " on" : "") + '" data-ofsens="0">⬇ Entrée (retour, réception)</button></span>' +
+        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Machine<select id="ofmachine"><option value="">Aucune</option>' + MACHINES.map(function (m) { return '<option' + (o.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></label>' +
+      '</div>';
+    if (ofCands) {
+      h += '<div class="banner warn"><span class="ic">?</span><div class="grow"><b>Plusieurs outils correspondent à « ' + esc(ofCands.code) + ' »</b>. Choisissez :</div></div><div class="box cands" style="margin-bottom:14px">' +
+        ofCands.list.map(function (t) { return '<button type="button" data-ofpick="' + esc(t.ref) + '"><b>' + esc(t.ref) + '</b> <span class="muted">' + esc(t.label) + '</span></button>'; }).join("") + '</div>';
+    }
+    h += '<div class="zone ' + (out ? "out" : "in") + '" style="margin-bottom:16px">' +
+      '<div class="state"><span class="dot"></span><span>' + (out ? "Scannez les outils à SORTIR" : "Scannez les outils ENTRÉS (retour ou réception)") + '</span></div>' +
+      '<input type="text" class="code" id="ofcode" placeholder="Code de l\'outil" aria-label="Code de l\'outil" enterkeyhint="go">' +
+      '<p class="help"><b>Chaque scan ajoute l\'outil à la liste</b> (rien n\'est enregistré tout de suite). Scanner le même outil deux fois ajoute 1 à sa quantité. Un seul outil ? Scannez-le puis validez. Ici, tapez la référence (ou sa fin, ex. <b>0108</b>) puis Entrée, ou cliquez un outil ci-dessous.</p>' +
+      '<div class="try"><span class="muted" style="font-size:13px">Simuler un scan :</span><div class="chips">' + S.tools.slice(0, 16).map(function (t) { return '<button type="button" data-ofscan="' + esc(t.ref) + '">' + esc(t.ref.slice(-4)) + '</button>'; }).join("") + (S.tools.length > 16 ? '<span class="muted" style="font-size:13px">… et ' + (S.tools.length - 16) + ' autres : tapez la référence ci-dessus</span>' : "") + '</div></div>' +
+    '</div>';
+    h += '<h2 style="margin-bottom:8px">Outils à enregistrer ' + (o.no ? '<span class="muted">OF ' + esc(o.no) + '</span> ' : '') + '<span class="muted" style="font-weight:400">(' + o.lines.length + ' outil(s), ' + pieces + ' pièce(s))</span></h2>';
+    if (!o.lines.length) { h += '<p class="muted">La liste est vide. Le dernier outil scanné apparaît en haut.</p>'; }
+    else {
+      h += '<div class="box"><div class="tablewrap"><table><thead><tr><th>Référence</th><th>Désignation</th><th class="num">En stock</th><th style="text-align:center">Quantité</th><th></th></tr></thead><tbody>' +
+        o.lines.map(function (l) {
+          var t = tool(l.ref), bad = out && l.qty > t.stock;
+          return '<tr><td><b>' + esc(l.ref) + '</b></td><td>' + esc(l.label) + (t.emplacement ? '<br><span style="font-size:.9em;font-weight:600;color:var(--navy)">📍 ' + esc(t.emplacement) + '</span>' : "") + (t.famille ? ' <span class="muted" style="font-size:.85em">(' + esc(t.famille) + ')</span>' : "") + '</td><td class="num">' + t.stock + (bad ? ' <span style="color:var(--red)">▼ insuffisant</span>' : '') + '</td>' +
+            '<td style="text-align:center"><input type="number" class="qty" data-ofqty="' + esc(l.ref) + '" min="1" max="999" step="1" value="' + l.qty + '" aria-label="Quantité de ' + esc(l.ref) + '" style="height:38px;font-size:18px' + (bad ? ';border-color:var(--red);background:#fbeaea' : '') + '"></td>' +
+            '<td style="text-align:center"><button type="button" data-ofrm="' + esc(l.ref) + '" title="Retirer de la liste" aria-label="Retirer ' + esc(l.ref) + '" style="background:none;border:0;cursor:pointer;font-size:18px;opacity:.6">✕</button></td></tr>';
+        }).join("") + '</tbody></table></div></div>' +
+        '<div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="btn-undo" id="ofclear">Vider la liste</button>' +
+        '<button type="button" class="btn-save" id="ofvalidate" style="background:' + (out ? "var(--out-btn)" : "var(--green-btn)") + '">✔ Valider : ' + (out ? "sortie" : "entrée") + ' de ' + pieces + ' pièce(s)</button></div>';
+    }
+    h += '</form>';
+    h += '<div class="box"><div class="hd">Derniers mouvements</div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody>' +
+      S.moves.slice(0, 6).map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div></div>';
+    return h;
+  }
+
+  function wireOf() {
+    var code = document.getElementById("ofcode");
+    function on(sel, fn) { document.querySelectorAll(sel).forEach(function (b) { b.addEventListener("click", function () { fn(b); }); }); }
+    document.getElementById("ofform").addEventListener("submit", function (e) { e.preventDefault(); ofAdd(code.value); });
+    on("[data-ofsens]", function (b) { ofRead(); S.of.sens = +b.getAttribute("data-ofsens"); save(); render(); });
+    on("[data-ofscan]", function (b) { ofAdd(b.getAttribute("data-ofscan")); });
+    on("[data-ofpick]", function (b) { ofAdd(b.getAttribute("data-ofpick")); });
+    on("[data-ofrm]", function (b) { ofRead(); var r = b.getAttribute("data-ofrm"); S.of.lines = S.of.lines.filter(function (l) { return l.ref !== r; }); ofFlash = { ok: true, msg: r + " retiré de la liste." }; ofResult = null; save(); render(); });
+    var c = document.getElementById("ofclear"); if (c) { c.addEventListener("click", function () { if (confirm("Vider toute la liste ?")) { S.of.lines = []; S.of.no = ""; ofFlash = { ok: true, msg: "Liste vidée." }; ofResult = null; save(); render(); } }); }
+    var v = document.getElementById("ofvalidate");
+    if (v) { v.addEventListener("click", function () { ofRead(); var n = 0; S.of.lines.forEach(function (l) { n += l.qty; }); if (confirm((S.of.sens === 1 ? "Enregistrer la SORTIE" : "Enregistrer l'ENTRÉE") + " de " + n + " pièce(s) (" + S.of.lines.length + " outil(s)) ?")) { ofValidate(); } }); }
+    var u = document.getElementById("ofundo"); if (u) { u.addEventListener("click", function () { if (confirm("Annuler ce mouvement ?")) { ofUndo(); } }); }
+    document.querySelectorAll("#ofno, [data-ofqty]").forEach(function (i) { i.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); code.focus(); } }); i.addEventListener("change", function () { ofRead(); save(); }); });
+    document.getElementById("ofmachine").addEventListener("change", function () { ofRead(); save(); code.focus(); });
+    if (window.matchMedia("(min-width: 761px)").matches) { code.focus({ preventScroll: true }); }
+  }
+
+  var sf = { q: "", fam: "", low: false, suivi: "", fold: { g: true, n: true } };   // filtre du tableau des seuils (gardé quand l'affichage est refait)
+  function familles() { var f = {}; S.tools.forEach(function (t) { if (t.famille) { f[t.famille.toLowerCase()] = t.famille; } }); return f; }
+  function famDatalist() { var f = familles(); return '<datalist id="dl-fam">' + Object.keys(f).sort().map(function (k) { return '<option value="' + esc(f[k]) + '">'; }).join("") + '</datalist>'; }
+  function seuilControls() {
+    var f = familles(), keys = Object.keys(f).sort();
+    return '<div class="bd" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;border-bottom:1px solid var(--line)"><input type="search" id="sfq" placeholder="Rechercher (référence, désignation, famille, emplacement)…" aria-label="Rechercher" value="' + esc(sf.q) + '" style="font:inherit;height:38px;padding:0 12px;border:1px solid #c9cfd8;border-radius:8px;min-width:280px">' +
+      (keys.length ? '<select id="sffam" aria-label="Famille" style="min-width:0"><option value="">Toutes les familles</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '"' + (sf.fam === k ? " selected" : "") + '>' + esc(f[k]) + '</option>'; }).join("") + '</select>' : "") +
+      '<label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="sflow"' + (sf.low ? " checked" : "") + '> Sous le seuil seulement</label><span class="muted" id="sfcount"></span></div>';
+  }
+  var seuilPg = null, seuilFirst = true;
+  function applySeuilFilter() {
+    var rows = document.querySelectorAll("tr.rmrow"), n = 0, t = sf.q.trim().toLowerCase(), active = !!(t || sf.fam || sf.low || sf.suivi);
+    var lines = Array.prototype.slice.call(document.querySelectorAll("tr.grp, tr.rmrow"));
+    if (!seuilPg && rows.length) { seuilPg = rmPager(lines, rows[0].closest(".tablewrap"), { per: 20, unit: "lignes", key: "seuils" }); seuilFirst = true; }
+    rows.forEach(function (r) {
+      var st = r.getAttribute("data-state"), sv = r.getAttribute("data-suivi");
+      var ok = (!t || r.getAttribute("data-txt").indexOf(t) >= 0) && (!sf.fam || r.getAttribute("data-fam") === sf.fam) && (!sf.low || st === "r")
+        && (!sf.suivi || (sf.suivi === "__none" ? (st === "r" && !sv) : sv === sf.suivi)) && (active || !sf.fold[st]);
+      r.rmOk = ok; if (ok) { n++; }
+    });
+    document.querySelectorAll("tr.grp").forEach(function (g) { g.classList.toggle("fold", !!sf.fold[g.getAttribute("data-g")]); });
+    if (seuilPg) { seuilPg.set(lines.filter(function (l) { return l.classList.contains("grp") ? !active : l.rmOk; }), seuilFirst); seuilFirst = false; }
+    document.querySelectorAll(".tile.clk").forEach(function (b) { b.classList.toggle("on", !!sf.suivi && b.getAttribute("data-sfsuivi") === sf.suivi); });
+    var c = document.getElementById("sfcount"); if (c) { c.textContent = active ? n + " outil(s) affiché(s) sur " + rows.length : ""; }
+  }
+  function wireSeuilFilter() {
+    document.querySelectorAll(".ptab").forEach(function (b) { b.addEventListener("click", function () {
+      prioTab = b.getAttribute("data-ptab");
+      document.querySelectorAll(".ptab").forEach(function (x) { x.classList.toggle("on", x === b); });
+      document.querySelectorAll(".plist").forEach(function (l) { l.classList.toggle("on", l.getAttribute("data-plist") === prioTab); });
+    }); });
+    document.querySelectorAll(".pmore").forEach(function (a) { a.addEventListener("click", function (e) {
+      e.preventDefault(); var l = a.closest(".plist"); l.classList.toggle("all");
+      a.textContent = l.classList.contains("all") ? "Voir moins" : "Voir les " + l.querySelectorAll(".prow").length + " premiers";
+    }); });
+    document.querySelectorAll(".etqone").forEach(function (a) { a.addEventListener("click", function (e) {   // 🖨 : l'étiquette de cet outil seulement, prête à imprimer
+      e.preventDefault(); var r = a.getAttribute("data-ref");
+      S.tools.forEach(function (t) { if (t.ref === r) { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } });
+      etq.copies = 1; etq.q = ""; etq.fam = ""; location.hash = "etiquettes";
+    }); });
+    document.querySelectorAll(".prow").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); sf.q = (a.querySelector(".pname b") || {}).textContent || ""; var q0 = document.getElementById("sfq"); if (q0) { q0.value = sf.q; applySeuilFilter(); } var d = document.getElementById("sfdetail"); if (d) { d.scrollIntoView({ behavior: "smooth" }); } }); });
+    document.querySelectorAll(".famrow").forEach(function (r) { r.addEventListener("click", function () {
+      var f = r.getAttribute("data-f"), sel = document.getElementById("sffam"); if (!sel || !f) { return; }
+      sf.fam = f; sel.value = f; applySeuilFilter(); var d = document.getElementById("sfdetail"); if (d) { d.scrollIntoView({ behavior: "smooth" }); }
+    }); });
+    document.querySelectorAll("tr.grp").forEach(function (g) { g.addEventListener("click", function () { var k = g.getAttribute("data-g"); sf.fold[k] = !sf.fold[k]; applySeuilFilter(); }); });
+    document.querySelectorAll(".tile.clk").forEach(function (b) { b.addEventListener("click", function () {
+      var v = b.getAttribute("data-sfsuivi"); sf.suivi = sf.suivi === v ? "" : v; applySeuilFilter();
+      if (sf.suivi) { var d = document.getElementById("sfdetail"); if (d) { d.scrollIntoView({ behavior: "smooth" }); } }
+    }); });
+    var q = document.getElementById("sfq"); if (!q) { return; }
+    q.addEventListener("input", function () { sf.q = q.value; applySeuilFilter(); });
+    var f = document.getElementById("sffam"); if (f) { f.addEventListener("change", function () { sf.fam = f.value; applySeuilFilter(); }); }
+    document.getElementById("sflow").addEventListener("change", function (e) { sf.low = e.target.checked; applySeuilFilter(); });
+    applySeuilFilter();
+  }
+  // Met à jour l'affichage sans faire sauter la page (la position de défilement est conservée)
+  function keepScroll() { var y = window.scrollY; render(); window.scrollTo(0, y); }
+  function tobuyCsv() {
+    var rows = [["Référence", "Désignation", "Famille", "Emplacement", "Stock", "Seuil mini", "Stock désiré", "À commander", "Prix unitaire (€ HT)", "Montant estimé (€ HT)", "Suivi"]];
+    sorted().forEach(function (t) { var k = status(t).k; if (k !== "r" && k !== "y") { return; } var q = Math.max(0, t.desired - t.stock), st = S.status[t.ref]; rows.push([t.ref, t.label, t.famille || "", t.emplacement || "", t.stock, t.seuil, t.desired, q, t.price || "", q && t.price ? (q * t.price).toFixed(2).replace(".", ",") : "", st ? st.statut : ""]); });
+    csvDownload(rows, "outils_a_commander.csv");
+  }
+  function wireSeuils() {
+    var tb = document.getElementById("tobuycsv"); if (tb) { tb.addEventListener("click", tobuyCsv); }
+    var tl = document.getElementById("tllist"); if (tl) { rmPager(Array.prototype.slice.call(tl.querySelectorAll(".tl-item")), tl, { per: 20, unit: "outils sous le seuil", display: "flex", key: "prio" }); }
+    seuilPg = null;
+    wireSeuilFilter();
+    document.querySelectorAll("[data-st]").forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        var ref = sel.getAttribute("data-st"), note = document.querySelector('[data-note="' + ref + '"]').value.trim();
+        if (sel.value === "") { delete S.status[ref]; } else { S.status[ref] = { statut: sel.value, note: note, t: nowIso() }; }
+        save(); keepScroll();
+      });
+    });
+    document.querySelectorAll("[data-note]").forEach(function (inp) {
+      inp.addEventListener("change", function () {
+        var ref = inp.getAttribute("data-note");
+        if (S.status[ref]) { S.status[ref].note = inp.value.trim(); S.status[ref].t = nowIso(); save(); keepScroll(); }
+      });
+    });
+  }
+
+  /* ---------- Utilisation des outils : plus et moins utilisés (comme utilisation.php) ---------- */
+  var usePer = 30;
+  function vUtil() {
+    var since = new Date(); since.setDate(since.getDate() - usePer); since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    var sinceIso = since.toISOString().slice(0, 19), total = 0;
+    var rows = S.tools.map(function (t) {
+      var exits = 0, cancels = 0, last = "";
+      S.moves.forEach(function (m) {
+        if (m.ref !== t.ref) { return; }
+        var isExit = m.qty < 0 && m.label.indexOf("Annulation") !== 0 && m.label.indexOf("Inventaire") !== 0;
+        if (isExit && m.t > last) { last = m.t; }
+        if (m.t < sinceIso) { return; }
+        if (isExit) { exits -= m.qty; }
+        if (m.qty > 0 && m.label.indexOf("Annulation sortie") === 0) { cancels += m.qty; }
+      });
+      var used = Math.max(0, exits - cancels); total += used;
+      return { t: t, used: used, last: last };
+    });
+    var most = rows.filter(function (r) { return r.used > 0; }).sort(function (a, b) { return b.used - a.used || a.t.ref.localeCompare(b.t.ref); });
+    var least = rows.slice().sort(function (a, b) { return a.used - b.used || (a.last || "").localeCompare(b.last || "") || b.t.stock - a.t.stock || a.t.ref.localeCompare(b.t.ref); });
+    var top = most.length ? most[0].used : 1;
+    var fb = {}; rows.forEach(function (r) { var f = r.t.famille || "(sans famille)"; fb[f] = fb[f] || { n: 0, used: 0 }; fb[f].n++; fb[f].used += r.used; });
+    var fkeys = Object.keys(fb).sort(function (a, b) { return fb[b].used - fb[a].used; });
+    var famBox = (fkeys.length > 1 || fkeys[0] !== "(sans famille)") ? '<div class="box" style="margin-top:20px"><div class="hd">Par famille d\'outils (' + usePer + ' jours)</div><div class="tablewrap"><table><thead><tr><th>Famille</th><th class="num">Outils</th><th class="num">Pièces sorties</th><th class="num">Part</th></tr></thead><tbody>' +
+      fkeys.map(function (k) { return '<tr><td><b>' + esc(k) + '</b></td><td class="num">' + fb[k].n + '</td><td class="num"><b>' + fb[k].used + '</b></td><td class="num">' + (total > 0 ? Math.round(fb[k].used / total * 100) + " %" : "—") + '</td></tr>'; }).join("") + '</tbody></table></div></div>' : "";
+    var h = '<h1>Utilisation des outils</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px">' +
+      '<span class="muted">Période :</span>' + [7, 30, 90].map(function (d) { return '<button type="button" class="btn-undo" data-per="' + d + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (d === usePer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + d + ' jours</button>'; }).join("") +
+      '<span class="muted">Total sorti : <b>' + total + '</b> pièce(s)</span></div><div class="grid2">';
+    h += '<div class="box"><div class="hd">Les plus utilisés (' + usePer + ' jours)</div><div class="bd">' +
+      (most.length ? most.slice(0, 8).map(function (r) { return '<div class="bar" style="grid-template-columns:90px 1fr 28px"><span title="' + esc(r.t.label) + '">' + esc(r.t.ref) + '</span><span class="track"><span class="fill" style="display:block;width:' + Math.round(r.used / top * 100) + '%"></span></span><b>' + r.used + '</b></div>'; }).join("") : '<p class="muted">Aucune sortie sur cette période.</p>') +
+      '</div></div>';
+    h += '<div class="box"><div class="hd">Les moins utilisés (' + usePer + ' jours)</div><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Sorti</th><th>Dernière sortie</th><th class="num">Stock</th></tr></thead><tbody>' +
+      least.slice(0, 8).map(function (r) { return '<tr><td>' + esc(r.t.ref) + ' <span class="muted">' + esc(r.t.label) + '</span></td><td class="num">' + (r.used ? '<b>' + r.used + '</b>' : '<span class="muted">0</span>') + '</td><td>' + (r.last ? fmtDate(r.last).slice(0, 10) : '<span class="muted">jamais sorti</span>') + '</td><td class="num">' + r.t.stock + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div></div>' +
+      famBox + '<p class="muted" style="font-size:13.5px">Utilisation = pièces sorties du magasin sur la période, sans les corrections d\'inventaire et sans les sorties annulées. Un outil très stocké mais rarement sorti est un candidat pour réduire son stock désiré ; un outil très utilisé avec peu de stock mérite un seuil mini plus haut.</p>';
+    return h;
+  }
+  function wireUtil() {
+    document.querySelectorAll("[data-per]").forEach(function (b) { b.addEventListener("click", function () { usePer = +b.getAttribute("data-per"); render(); }); });
+  }
+
+  /* ---------- Durée des ruptures (comme ruptures.php) ---------- */
+  var rupPer = 90;
+  function vRupt() {
+    var now = Date.now(), sinceMs = rupPer > 0 ? now - rupPer * 86400000 : 0;
+    var rows = S.rup.map(function (r) {
+      var a = new Date(r.start).getTime(), b = r.end ? new Date(r.end).getTime() : null, t = tool(r.ref);
+      return { r: r, a: a, b: b, dur: (b || now) - a, t: t };
+    }).filter(function (x) { return x.t; });
+    var ongoing = rows.filter(function (x) { return x.b === null; }).sort(function (x, y) { return y.dur - x.dur; });
+    var done = rows.filter(function (x) { return x.b !== null && x.b >= sinceMs; }).sort(function (x, y) { return y.b - x.b; });
+    var avg = 0, longest = 0; done.forEach(function (x) { avg += x.dur; longest = Math.max(longest, x.dur); }); avg = done.length ? avg / done.length : 0;
+    var bytool = {};
+    rows.forEach(function (x) { if (x.b === null || x.b >= sinceMs) { var o = bytool[x.r.ref] || (bytool[x.r.ref] = { ref: x.r.ref, label: x.t.label, n: 0, total: 0, max: 0 }); o.n++; o.total += x.dur; o.max = Math.max(o.max, x.dur); } });
+    var tl = Object.keys(bytool).map(function (k) { return bytool[k]; }).sort(function (x, y) { return y.total - x.total; });
+    var maxOn = ongoing.length ? ongoing[0].dur : 0;
+    var h = '<h1>Durée des ruptures</h1><div class="row" style="justify-content:flex-start;margin-bottom:14px"><span class="muted">Ruptures terminées sur :</span>' +
+      [[30, "30 jours"], [90, "90 jours"], [365, "1 an"], [0, "Tout"]].map(function (p) { return '<button type="button" class="btn-undo" data-rper="' + p[0] + '" style="font-weight:600;padding:8px 16px;border-width:2px;border-radius:10px;' + (p[0] === rupPer ? 'background:var(--navy);border-color:var(--navy);color:#fff' : '') + '">' + p[1] + '</button>'; }).join("") + '</div>';
+    h += '<div class="tiles" style="margin-bottom:18px">' +
+      '<div class="tile"><b style="color:' + (ongoing.length ? "var(--red)" : "var(--green)") + '">' + ongoing.length + '</b><span>outil(s) sous le seuil maintenant</span></div>' +
+      '<div class="tile"><b>' + (maxOn ? fmtDur(maxOn) : "—") + '</b><span>rupture en cours la plus longue</span></div>' +
+      '<div class="tile"><b>' + (done.length ? fmtDur(avg) : "—") + '</b><span>durée moyenne des ruptures terminées (' + done.length + ')</span></div>' +
+      '<div class="tile"><b>' + (longest ? fmtDur(longest) : "—") + '</b><span>rupture terminée la plus longue</span></div></div>';
+    h += '<h2>Ruptures en cours</h2>' + (ongoing.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Sous le seuil depuis</th><th>Durée</th><th></th><th class="num">Stock / mini</th><th>Suivi du réapprovisionnement</th></tr></thead><tbody data-pg="rupt_encours|ruptures en cours">' +
+      ongoing.map(function (x) { var st = S.status[x.r.ref]; return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td><b>' + fmtDur(x.dur) + '</b></td><td><span style="display:block;height:8px;width:110px;border-radius:4px;background:#e6e9ee"><span style="display:block;height:8px;border-radius:4px;background:var(--red);width:' + Math.round(x.dur / maxOn * 100) + '%"></span></span></td><td class="num">' + x.t.stock + ' / ' + x.t.seuil + '</td><td>' + (st ? '<b>' + esc(st.statut) + '</b>' + (st.note ? ' <span class="muted">' + esc(st.note) + '</span>' : '') : '<span class="muted">— sans suivi —</span>') + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div>' : '<p class="muted">Aucun outil sous son seuil.</p>');
+    h += '<h2>Ruptures terminées (outil réapprovisionné)</h2>' + (done.length ? '<div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th>Passé sous le seuil le</th><th>Réapprovisionné le</th><th class="num">Durée</th><th class="num">Stock le plus bas</th></tr></thead><tbody data-pg="rupt_finies|ruptures terminées">' +
+      done.map(function (x) { return '<tr><td>' + esc(x.r.ref) + ' <span class="muted">' + esc(x.t.label) + '</span></td><td>' + fmtDate(x.r.start) + '</td><td>' + fmtDate(x.r.end) + '</td><td class="num"><b>' + fmtDur(x.dur) + '</b></td><td class="num">' + (x.r.min <= 0 ? '<span style="color:var(--red);font-weight:600">0 (rupture totale)</span>' : x.r.min + ' / mini ' + x.r.seuil) + '</td></tr>'; }).join("") +
+      '</tbody></table></div></div>' : '<p class="muted">Aucune rupture terminée sur cette période.</p>');
+    if (tl.length) {
+      h += '<h2>Par outil (temps total sous le seuil)</h2><div class="box"><div class="tablewrap"><table><thead><tr><th>Outil</th><th class="num">Nombre de ruptures</th><th class="num">Temps total</th><th class="num">Durée moyenne</th><th class="num">Plus longue</th></tr></thead><tbody data-pg="rupt_paroutil|outils">' +
+        tl.map(function (o) { return '<tr><td>' + esc(o.ref) + ' <span class="muted">' + esc(o.label) + '</span></td><td class="num">' + o.n + '</td><td class="num"><b>' + fmtDur(o.total) + '</b></td><td class="num">' + fmtDur(o.total / o.n) + '</td><td class="num">' + fmtDur(o.max) + '</td></tr>'; }).join("") + '</tbody></table></div></div>';
+    }
+    h += '<p class="muted" style="font-size:13.5px">Une rupture commence quand le stock d\'un outil passe <b>sous son seuil mini</b> et se termine quand il remonte au niveau du seuil ou au-dessus (réapprovisionnement). Une sortie annulée tout de suite (moins de 10 minutes) n\'est pas comptée comme une rupture.</p>';
+    return h;
+  }
+  function wireRupt() {
+    document.querySelectorAll("[data-rper]").forEach(function (b) { b.addEventListener("click", function () { rupPer = +b.getAttribute("data-rper"); pgReset("rupt_finies"); pgReset("rupt_paroutil"); render(); }); });
+  }
+
+  // Code 128 (jeu B : majuscules, minuscules, chiffres, ponctuation) : motifs de largeurs de barres, comme la bibliothèque de Dolibarr
+  var C128 = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+  function code128Widths(text) {
+    var vals = [104], sum = 104, i;
+    for (i = 0; i < text.length; i++) {
+      var v = text.charCodeAt(i) - 32;
+      if (v < 0 || v > 95) { return null; }   // caractère hors jeu B
+      vals.push(v); sum += v * (i + 1);
+    }
+    vals.push(sum % 103); vals.push(106);
+    return vals.map(function (v) { return C128[v]; }).join("");
+  }
+  // SVG vectoriel : une barre noire par élément impair, hauteur adaptée à l'étiquette
+  function code128Svg(text) {
+    var w = code128Widths(text); if (!w) { return ""; }
+    var x = 0, rects = "", i;
+    for (i = 0; i < w.length; i++) { var n = +w.charAt(i); if (i % 2 === 0) { rects += '<rect x="' + x + '" y="0" width="' + n + '" height="1"/>'; } x += n; }
+    return '<svg viewBox="0 0 ' + x + ' 1" preserveAspectRatio="none" shape-rendering="crispEdges" fill="#000" role="img" aria-label="Code-barres ' + text.replace(/"/g, "") + '">' + rects + '</svg>';
+  }
+
+  /* ---------- Étiquettes codes-barres (comme etiquettes.php) ---------- */
+  var RM_LOGO = "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20262%2098%22%3E%3Crect%20width%3D%22262%22%20height%3D%2298%22%20fill%3D%22%23fff%22/%3E%3Ctext%20x%3D%22131%22%20y%3D%2252%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%22%20font-weight%3D%22700%22%20font-size%3D%2240%22%20fill%3D%22%23263c5c%22%3Evotre-logo%3C/text%3E%3Ctext%20x%3D%22131%22%20y%3D%2282%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%22%20font-size%3D%2222%22%20fill%3D%22%23263c5c%22%3EATELIER%3C/text%3E%3C/svg%3E";
+  var ETQ_SIZES = { g: ["Grande : 100 × 56 mm", 100, 56], m: ["Moyenne : 70 × 39 mm (recommandé)", 70, 39], p: ["Petite : 50 × 28 mm", 50, 28] };
+  var etq = { off: {}, copies: 1, size: "m", q: "", fam: "", focus: "" };
+  function etqShown() { var q = etq.q.trim().toLowerCase(); return S.tools.filter(function (t) { return (!etq.fam || (t.famille || "") === etq.fam) && (!q || (t.ref + " " + t.label + " " + (t.emplacement || "")).toLowerCase().indexOf(q) >= 0); }); }
+  function vEtiq() {
+    var sz = ETQ_SIZES[etq.size], sel = S.tools.filter(function (t) { return !etq.off[t.ref]; }), n = sel.length * etq.copies, shown = etqShown();
+    var h = '<div class="et-ctrl"><h1>Étiquettes codes-barres des outils</h1>' +
+      '<p class="intro" style="margin-top:8px">Cochez les outils dont vous voulez l\'étiquette et choisissez le format : l\'aperçu ci-dessous est prêt à imprimer (papier autocollant ou papier simple à découper). L\'étiquette porte la <b>référence</b>, la désignation et le <b>code à scanner</b>.</p>' +
+      '<div class="row" style="justify-content:flex-start;gap:16px;margin:16px 0">' +
+        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Format de l\'étiquette<select id="etsize">' + Object.keys(ETQ_SIZES).map(function (k) { return '<option value="' + k + '"' + (k === etq.size ? " selected" : "") + '>' + ETQ_SIZES[k][0] + '</option>'; }).join("") + '</select></label>' +
+        '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Exemplaires par outil<input type="number" id="etcopies" min="1" max="20" value="' + etq.copies + '" style="font:inherit;font-size:16px;height:42px;width:110px;padding:0 10px;border:1px solid #c9cfd8;border-radius:10px"></label>' +
+        '<span class="muted" style="align-self:flex-end;font-size:13.5px">Code 128, lu par toutes les douchettes (l\'outil réel propose aussi le QR code)</span></div>' +
+      '<div class="row" style="justify-content:flex-start;gap:10px;margin-bottom:10px">' +
+        '<input type="search" id="etq" placeholder="Rechercher un outil, une désignation, un emplacement…" value="' + esc(etq.q) + '" style="font:inherit;font-size:16px;height:42px;flex:1;min-width:220px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px">' +
+        '<select id="etfam"><option value="">Toutes les familles</option>' + Object.keys(familles()).sort().map(function (k) { var n = familles()[k]; return '<option value="' + esc(n) + '"' + (n === etq.fam ? " selected" : "") + '>' + esc(n) + '</option>'; }).join("") + '</select></div>' +
+      '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:10px"><button type="button" class="btn-undo" id="etall">Cocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etnone">Décocher les ' + shown.length + ' affichés</button><button type="button" class="btn-undo" id="etlow">Seulement les outils sous le seuil</button><button type="button" class="btn-undo" id="etclear">Tout décocher</button></div>' +
+      '<div class="chips" id="etchips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">' +
+        shown.map(function (t) { return '<label class="etchip" style="display:inline-flex;gap:5px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-family:var(--font-mono);font-size:13px"><input type="checkbox" data-etref="' + esc(t.ref) + '"' + (etq.off[t.ref] ? "" : " checked") + '>' + esc(t.ref.length > 9 ? t.ref : t.ref.slice(-4)) + '</label>'; }).join("") +
+        '</div>' +
+      '<div class="row" style="justify-content:flex-start;margin-bottom:12px"><button type="button" class="btn-save" id="etprint">🖨 Imprimer</button><span class="muted">' + sel.length + ' outil(s) × ' + etq.copies + ' = ' + n + ' étiquette(s). Imprimez à l\'échelle 100 %.</span></div></div>';
+    h += '<style>.et-sheet{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}' +
+      '.et-lab{width:' + sz[1] + 'mm;height:' + sz[2] + 'mm;border:.2mm dashed #999;display:grid;grid-template-columns:1fr 27%;grid-template-rows:27% 1fr 15% 9%;overflow:hidden;break-inside:avoid;background:#156082;color:#fff;font-size:' + (sz[1] / 10) + 'pt;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif}' +
+      '.et-lab .lg{grid-column:1;grid-row:1;margin:4% 0 0 4%;background:#fff;display:flex;align-items:center;justify-content:center;width:50%}.et-lab .lg img{display:block;width:100%;height:100%;object-fit:contain}' +
+      '.et-lab .em{grid-column:2;grid-row:1;border:.2mm solid #0b2f40;display:flex;flex-direction:column}.et-lab .em .t{font-size:.95em;text-align:center;border-bottom:.2mm solid #0b2f40;padding:.15em 0;line-height:1.1}' +
+      '.et-lab .em .v{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:2.2em;font-weight:700;line-height:1.05;overflow:hidden;padding:0 .2em;word-break:break-word}.et-lab .em .v.m{font-size:1.45em}.et-lab .em .v.s{font-size:1.05em}' +
+      '.et-lab .bcp{grid-column:1/3;grid-row:2;justify-self:center;align-self:center;width:58%;height:88%;background:#fff;color:#000;display:flex;flex-direction:column;padding:.4em .6em .2em;min-height:0}' +
+      '.et-lab .bcp .c{flex:1;min-height:0;display:flex;justify-content:center}.et-lab .bcp .c svg{display:block;width:100%;height:100%}.et-lab .bcp .t{font-size:1.05em;text-align:center;line-height:1.2;padding-top:.15em}' +
+      '.et-lab .nm{grid-column:1/3;grid-row:3;justify-self:center;align-self:center;width:84%;border:.2mm solid #0b2f40;text-align:center;font-size:1.05em;padding:.15em .4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}' +
+      '.et-lab .mn{grid-column:1/3;grid-row:4;text-align:center;font-weight:700;font-size:1.05em;line-height:1}' +
+      '.et-lab.hid{display:none}@media print{.et-lab.hid{display:flex}.et-prevnote{display:none}.demo-note,.topbar,.rm-test-strip,.rm-test-wm,.et-ctrl{display:none!important}main{padding:0!important}.et-sheet{border:0;box-shadow:none;padding:0}@page{size:A4;margin:8mm}}</style>' +
+      (sel.length > 24 ? '<p class="muted et-prevnote" style="margin-bottom:8px">Aperçu des 24 premières étiquettes : l\'impression contient les ' + n + '.</p>' : '') + '<div class="et-sheet">' + sel.map(function (t, ti) {
+        var emp = (t.emplacement || "").trim(), vc = emp.length > 11 ? " s" : (emp.length > 5 ? " m" : ""); var one = '<div class="et-lab' + (ti >= 24 ? ' hid' : '') + '"><div class="lg"><img src="' + RM_LOGO + '" alt="Logo"></div><div class="em"><div class="t">Emplacement</div><div class="v' + vc + '">' + (emp ? esc(emp) : "&nbsp;") + '</div></div><div class="bcp"><div class="c">' + code128Svg(t.ref) + '</div><div class="t">' + esc(t.ref) + '</div></div><div class="nm">' + esc(t.label || t.ref) + '</div><div class="mn">' + (t.seuil > 0 ? "Stock mini : " + t.seuil : "") + '</div></div>';
+        return new Array(etq.copies + 1).join(one);
+      }).join("") + '</div>';
+    return h;
+  }
+  function wireEtiq() {
+    document.getElementById("etsize").addEventListener("change", function (e) { etq.size = e.target.value; render(); });
+    document.getElementById("etcopies").addEventListener("change", function (e) { var c = parseInt(e.target.value, 10); etq.copies = c > 0 ? Math.min(c, 20) : 1; render(); });
+    document.querySelectorAll("[data-etref]").forEach(function (c) { c.addEventListener("change", function () { if (c.checked) { delete etq.off[c.getAttribute("data-etref")]; } else { etq.off[c.getAttribute("data-etref")] = 1; } render(); }); });
+    document.getElementById("etall").addEventListener("click", function () { etqShown().forEach(function (t) { delete etq.off[t.ref]; }); render(); });
+    document.getElementById("etnone").addEventListener("click", function () { etqShown().forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
+    document.getElementById("etclear").addEventListener("click", function () { S.tools.forEach(function (t) { etq.off[t.ref] = 1; }); render(); });
+    document.getElementById("etlow").addEventListener("click", function () { S.tools.forEach(function (t) { var k = status(t).k; if (k === "r" || k === "y") { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } }); render(); });
+    document.getElementById("etfam").addEventListener("change", function (e) { etq.fam = e.target.value; pgReset("etq"); render(); });
+    var ec = document.getElementById("etchips"); if (ec) { rmPager(Array.prototype.slice.call(ec.querySelectorAll(".etchip")), ec, { per: 20, unit: "outils", display: "inline-flex", key: "etq" }); }
+    var eq = document.getElementById("etq");
+    eq.addEventListener("input", function (e) { etq.q = e.target.value; pgReset("etq"); var p = eq.selectionStart; render(); var n = document.getElementById("etq"); n.focus(); n.setSelectionRange(p, p); });
+    document.getElementById("etprint").addEventListener("click", function () { window.print(); });
+  }
+
+
+  /* ---------- Import / export Excel (comme import_export.php) : vrai fichier .xlsx écrit et lu sans bibliothèque ---------- */
+  var XL_HEAD = ["Référence", "Désignation", "Famille", "Emplacement", "Code-barres", "Stock", "Seuil mini", "Stock désiré", "Prix unitaire (€ HT)"];
+  var crcT = null;
+  function crc32(u8) {
+    if (!crcT) { crcT = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) { c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; } crcT[n] = c >>> 0; } }
+    var crc = 0xFFFFFFFF; for (var i = 0; i < u8.length; i++) { crc = crcT[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8); } return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zipStore(files) {   // archive zip sans compression (suffisant pour un .xlsx)
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0, csize = 0;
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data), size = data.length;
+      var lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true);
+      parts.push(new Uint8Array(lh.buffer), name, data);
+      var ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+      ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), name); csize += 46 + name.length; offset += 30 + name.length + size;
+    });
+    var e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+  function xmlEsc(v) { return String(v).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function colName(i) { return String.fromCharCode(65 + i); }
+  function xlsxBlob(rows) {   // rows : tableau de lignes ; nombres écrits comme nombres (les zéros sont conservés), le reste comme texte
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>' + XL_HEAD.map(function (h, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + [22, 38, 22, 24, 20, 10, 12, 14, 20][i] + '" customWidth="1"/>'; }).join("") + '</cols><sheetData>' +
+      rows.map(function (r, ri) { return '<row r="' + (ri + 1) + '">' + r.map(function (v, ci) { var ref = colName(ci) + (ri + 1); if (v === null || v === "") { return ""; } return typeof v === "number" ? '<c r="' + ref + '"><v>' + v + '</v></c>' : '<c r="' + ref + '" t="inlineStr"><is><t>' + xmlEsc(v) + '</t></is></c>'; }).join("") + '</row>'; }).join("") + '</sheetData></worksheet>';
+    return zipStore([
+      { name: "[Content_Types].xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+      { name: "_rels/.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: "xl/workbook.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Outils" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+      { name: "xl/_rels/workbook.xml.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { name: "xl/styles.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+      { name: "xl/worksheets/sheet1.xml", text: sheet }
+    ]);
+  }
+  function inflateRaw(u8) { return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer(); }
+  function readXlsx(buf) {   // lit la première feuille d'un .xlsx : promesse d'un tableau de lignes (null = case vide)
+    var u8 = new Uint8Array(buf), dv = new DataView(buf), i = u8.length - 22;
+    while (i >= 0 && dv.getUint32(i, true) !== 0x06054b50) { i--; }
+    if (i < 0) { return Promise.reject(new Error("pas un fichier Excel")); }
+    var n = dv.getUint16(i + 10, true), off = dv.getUint32(i + 16, true), entries = {}, dec = new TextDecoder();
+    for (var k = 0; k < n; k++) {
+      var nl = dv.getUint16(off + 28, true), el = dv.getUint16(off + 30, true), cl = dv.getUint16(off + 32, true);
+      entries[dec.decode(u8.subarray(off + 46, off + 46 + nl))] = { method: dv.getUint16(off + 10, true), csize: dv.getUint32(off + 20, true), lho: dv.getUint32(off + 42, true) };
+      off += 46 + nl + el + cl;
+    }
+    function get(name) {
+      var e = entries[name]; if (!e) { return Promise.resolve(null); }
+      var start = e.lho + 30 + dv.getUint16(e.lho + 26, true) + dv.getUint16(e.lho + 28, true), data = u8.subarray(start, start + e.csize);
+      return (e.method === 0 ? Promise.resolve(data) : inflateRaw(data)).then(function (b) { return dec.decode(b); });
+    }
+    var sheetName = entries["xl/worksheets/sheet1.xml"] ? "xl/worksheets/sheet1.xml" : Object.keys(entries).filter(function (x) { return /^xl\/worksheets\/sheet\d+\.xml$/.test(x); }).sort()[0];
+    return Promise.all([get("xl/sharedStrings.xml"), get(sheetName)]).then(function (r) {
+      if (!r[1]) { throw new Error("feuille introuvable"); }
+      var sst = [];
+      if (r[0]) { Array.prototype.forEach.call(new DOMParser().parseFromString(r[0], "application/xml").getElementsByTagName("si"), function (si) { sst.push(Array.prototype.map.call(si.getElementsByTagName("t"), function (t) { return t.textContent; }).join("")); }); }
+      var grid = [];
+      Array.prototype.forEach.call(new DOMParser().parseFromString(r[1], "application/xml").getElementsByTagName("c"), function (c) {
+        var m = /^([A-Z]+)(\d+)$/.exec(c.getAttribute("r") || ""); if (!m) { return; }
+        var col = 0; for (var q = 0; q < m[1].length; q++) { col = col * 26 + m[1].charCodeAt(q) - 64; } col--;
+        var row = +m[2] - 1, t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0], val = null;
+        if (t === "s" && v) { val = sst[+v.textContent]; }
+        else if (t === "inlineStr") { val = Array.prototype.map.call(c.getElementsByTagName("t"), function (x) { return x.textContent; }).join(""); }
+        else if (v) { val = v.textContent; }
+        (grid[row] = grid[row] || [])[col] = (val === null || String(val).trim() === "") ? null : String(val).trim();
+      });
+      var out = []; for (var a = 0; a < grid.length; a++) { var line = grid[a] || []; var full = []; for (var b = 0; b < line.length; b++) { full[b] = line[b] === undefined ? null : line[b]; } out.push(full); }
+      return out;
+    });
+  }
+  function parseCsv(text) {
+    text = text.replace(/^\uFEFF/, ""); var first = text.split("\n")[0], d = (first.split(";").length >= first.split(",").length) ? ";" : ",";
+    var rows = [], row = [], cur = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (q) { if (ch === '"') { if (text.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; } } else { cur += ch; } }
+      else if (ch === '"') { q = true; } else if (ch === d) { row.push(cur); cur = ""; }
+      else if (ch === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; } else if (ch !== "\r") { cur += ch; }
+    }
+    if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+    return rows.map(function (r) { return r.map(function (v) { v = v.trim(); return v === "" ? null : v; }); });
+  }
+  function xlNorm(s) { return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ""); }
+  var XL_ALIAS = { ref: ["reference", "ref"], label: ["designation", "libelle", "label", "nom"], famille: ["famille", "famillesdoutils", "familledoutil", "categorie", "type"], emplacement: ["emplacement", "rangement", "bac", "localisation", "lieu"], barcode: ["codebarres", "codebarre", "barcode"], stock: ["stock", "stockactuel", "quantite", "stockcompte"],
+    seuil: ["seuilmini", "seuil", "stockminimum", "stockmini"], desired: ["stockdesire", "desire", "stockdesired"], price: ["prixunitaireht", "prixunitaire", "prix", "prixht", "prixdachat", "prixachat", "cout", "coutunitaire", "prixunitaireeuroht"] };
+  // Aperçu : ce que l'import ferait (rien n'est écrit), mêmes règles que rmeca_xl_plan() du module
+  function xlPlan(rows) {
+    var out = { items: [], counts: { create: 0, update: 0, same: 0, error: 0 }, fatal: "" };
+    if (!rows.length) { out.fatal = "Le fichier est vide."; return out; }
+    var map = {}; rows[0].forEach(function (h, i) { var n = xlNorm(h); Object.keys(XL_ALIAS).forEach(function (k) { if (XL_ALIAS[k].indexOf(n) >= 0 && map[k] === undefined) { map[k] = i; } }); });
+    if (map.ref === undefined) { out.fatal = "Colonne « Référence » introuvable sur la première ligne. Utilisez le fichier téléchargé avec « Exporter » ou le modèle."; return out; }
+    if (rows.length - 1 > 1000) { out.fatal = "Trop de lignes (maximum 1000 par import)."; return out; }
+    var byref = {}, codes = {}, seen = {};
+    S.tools.forEach(function (t) { byref[t.ref.toLowerCase()] = t; if (t.barcode) { codes[t.barcode] = t.ref; } });
+    function txt(v, err, name) { if (v === null) { return null; } if (v.trim() === "-") { return ""; } if (v.trim().length > 100) { err.push(name + " trop long (100 caractères maximum)"); return null; } return v.replace(/\s+/g, " ").trim(); }
+    function int(v, err, name) { if (v === null) { return null; } v = String(v).replace(",", "."); if (isNaN(v) || parseFloat(v) !== Math.floor(parseFloat(v))) { err.push(name + " : « " + v + " » n'est pas un nombre entier"); return null; } if (parseFloat(v) < 0) { err.push(name + " : valeur négative"); return null; } return parseInt(v, 10); }
+    function dec(v, err, name) { if (v === null) { return null; } v = String(v).replace(/[\s€]/g, "").replace(",", "."); if (isNaN(v) || v === "") { err.push(name + " : « " + v + " » n'est pas un nombre"); return null; } if (parseFloat(v) < 0 || parseFloat(v) > 1000000) { err.push(name + " : valeur hors limites"); return null; } return Math.round(parseFloat(v) * 10000) / 10000; }
+    for (var i = 1; i < rows.length; i++) {
+      var line = rows[i];
+      function g(k) { return map[k] !== undefined && line[map[k]] !== undefined ? line[map[k]] : null; }
+      if (["ref", "label", "barcode", "stock", "seuil", "desired", "price", "famille", "emplacement"].every(function (k) { return g(k) === null; })) { continue; }
+      var err = [], ref = g("ref");
+      var it = { line: i + 1, ref: ref || "", action: "", changes: [], error: "", label: g("label"), barcode: g("barcode"), stock: int(g("stock"), err, "Stock"), seuil: int(g("seuil"), err, "Seuil mini"), desired: int(g("desired"), err, "Stock désiré"), price: dec(g("price"), err, "Prix unitaire"), famille: txt(g("famille"), err, "Famille"), emplacement: txt(g("emplacement"), err, "Emplacement") };
+      if (ref === null) { err.push("Référence manquante"); }
+      else if (!/^[A-Za-z0-9_.\-]{1,60}$/.test(ref)) { err.push("Référence « " + ref + " » non valide (lettres, chiffres, _ - . seulement, sans espace)"); }
+      else if (seen[ref.toLowerCase()]) { err.push("Référence en double (déjà ligne " + seen[ref.toLowerCase()] + ")"); } else { seen[ref.toLowerCase()] = i + 1; }
+      var cur = ref !== null ? byref[ref.toLowerCase()] : null;
+      if (it.barcode !== null && codes[it.barcode] && (!cur || codes[it.barcode] !== cur.ref)) { err.push("Code-barres déjà utilisé par " + codes[it.barcode]); }
+      if (!err.length) {
+        if (!cur) {
+          if (it.label === null) { err.push("Désignation obligatoire pour créer un nouvel outil"); }
+          else {
+            it.action = "create"; it.changes.push("Nouvel outil « " + it.label + " »");
+            if (it.stock !== null) { it.changes.push("Stock : " + it.stock); }
+            if (it.seuil) { it.changes.push("Seuil mini : " + it.seuil); } if (it.desired) { it.changes.push("Stock désiré : " + it.desired); }
+            if (it.barcode !== null) { it.changes.push("Code-barres : " + it.barcode); } if (it.price) { it.changes.push("Prix : " + it.price + " €"); }
+            if (it.famille) { it.changes.push("Famille : " + it.famille); } if (it.emplacement) { it.changes.push("Emplacement : " + it.emplacement); }
+          }
+        } else {
+          it.ref = cur.ref;
+          if (it.label !== null && it.label !== cur.label) { it.changes.push("Désignation : " + cur.label + " → " + it.label); }
+          if (it.barcode !== null && it.barcode !== (cur.barcode || "")) { it.changes.push("Code-barres : " + (cur.barcode || "—") + " → " + it.barcode); }
+          if (it.stock !== null && it.stock !== cur.stock) { it.changes.push("Stock : " + cur.stock + " → " + it.stock + " (mouvement d'inventaire)"); }
+          if (it.seuil !== null && it.seuil !== cur.seuil) { it.changes.push("Seuil mini : " + cur.seuil + " → " + it.seuil); }
+          if (it.desired !== null && it.desired !== cur.desired) { it.changes.push("Stock désiré : " + cur.desired + " → " + it.desired); }
+          if (it.price !== null && Math.abs(it.price - (cur.price || 0)) > 0.00005) { it.changes.push("Prix : " + (cur.price > 0 ? cur.price : "—") + " → " + it.price + " €"); }
+          if (it.famille !== null && it.famille !== (cur.famille || "")) { it.changes.push("Famille : " + (cur.famille || "—") + " → " + (it.famille || "(effacé)")); }
+          if (it.emplacement !== null && it.emplacement !== (cur.emplacement || "")) { it.changes.push("Emplacement : " + (cur.emplacement || "—") + " → " + (it.emplacement || "(effacé)")); }
+          it.action = it.changes.length ? "update" : "same";
+        }
+      }
+      if (err.length) { it.action = "error"; it.error = err.join(" ; "); }
+      out.counts[it.action]++; out.items.push(it);
+    }
+    if (!out.items.length) { out.fatal = "Aucune ligne à importer dans le fichier."; }
+    return out;
+  }
+  function xlApply(plan) {   // écrit : créations, mises à jour, mouvements d'inventaire tracés
+    var made = 0, upd = 0, moves = 0;
+    plan.items.forEach(function (it) {
+      if (it.action !== "create" && it.action !== "update") { return; }
+      var t;
+      if (it.action === "create") { t = { ref: it.ref, label: it.label, stock: 0, seuil: it.seuil || 0, desired: it.desired || 0, price: it.price || 0, barcode: it.barcode || "", famille: it.famille || "", emplacement: it.emplacement || "" }; S.tools.push(t); made++; }
+      else { t = tool(it.ref); upd++; if (it.label !== null) { t.label = it.label; } if (it.barcode !== null) { t.barcode = it.barcode; } if (it.seuil !== null) { t.seuil = it.seuil; } if (it.desired !== null) { t.desired = it.desired; } if (it.price !== null) { t.price = it.price; } if (it.famille !== null) { t.famille = it.famille; } if (it.emplacement !== null) { t.emplacement = it.emplacement; } }
+      if (it.stock !== null && it.stock !== t.stock) { S.moves.unshift({ t: nowIso(), ref: t.ref, qty: it.stock - t.stock, label: "Inventaire (import Excel) : " + t.stock + " → " + it.stock, who: "vous (démo)" }); t.stock = it.stock; moves++; }
+    });
+    cleanStatus(); save();
+    return { created: made, updated: upd, moves: moves };
+  }
+  var xlState = { plan: null, name: "", msg: null, error: "" };
+  function download(blob, name) { var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+  function vXl() {
+    var h = '<h1>Import / export Excel des outils</h1><div class="box"><div class="hd">Exporter les outils vers Excel</div><div class="bd"><p class="muted" style="margin-bottom:12px">Télécharge un vrai fichier Excel avec tous les outils : référence, désignation, code-barres, stock, seuil mini, stock désiré et prix unitaire. Vous pouvez le modifier puis le réimporter ci-dessous.</p>' +
+      '<div class="row" style="justify-content:flex-start"><button type="button" class="btn-save" id="xlexport">⬇ Télécharger les outils (.xlsx)</button><button type="button" class="btn-undo" id="xltemplate">Modèle vide à remplir</button></div></div></div>';
+    if (xlState.error) { h += '<div class="banner ko"><span class="ic">✕</span><div class="grow"><b>' + esc(xlState.error) + '</b></div></div>'; }
+    if (xlState.msg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow"><b>Import terminé.</b> ' + xlState.msg.created + ' outil(s) créé(s), ' + xlState.msg.updated + ' mis à jour, ' + xlState.msg.moves + ' mouvement(s) de stock enregistré(s) dans l\'historique.</div></div>'; }
+    var pl = xlState.plan;
+    if (pl) {
+      var c = pl.counts, pill = { create: ["Nouveau", "#1f7a1f"], update: ["Mis à jour", "#2a78d6"], same: ["Inchangé", "#8a8a86"], error: ["Erreur", "#d03b3b"] };
+      h += '<div class="box"><div class="hd">Aperçu de l\'import : ' + esc(xlState.name) + '</div><div class="bd"><div class="tiles" style="margin-bottom:14px"><div class="tile"><b style="color:#1f7a1f">' + c.create + '</b><span>nouveau(x)</span></div><div class="tile"><b style="color:#2a78d6">' + c.update + '</b><span>mis à jour</span></div><div class="tile"><b>' + c.same + '</b><span>inchangé(s)</span></div><div class="tile"><b style="color:' + (c.error ? "var(--red)" : "inherit") + '">' + c.error + '</b><span>erreur(s)</span></div></div>' +
+        (c.error ? '<p style="margin:4px 0 12px"><b>Rien ne sera importé tant qu\'il y a des erreurs.</b> Corrigez le fichier puis renvoyez-le.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
+          : (c.create + c.update === 0 ? '<p style="margin:4px 0 12px">Le fichier ne change rien : tout est déjà à jour.</p><button type="button" class="btn-undo" id="xlclose">Fermer</button>'
+          : '<div class="row" style="justify-content:flex-start;margin:4px 0 16px"><button type="button" class="btn-save" id="xlconfirm" style="background:var(--green-btn)">✔ Confirmer l\'import</button><button type="button" class="btn-undo" id="xlclose">Annuler</button></div>')) +
+        '<div class="tablewrap"><table><thead><tr><th>Ligne</th><th>Référence</th><th>Action</th><th>Détail</th></tr></thead><tbody data-pg="xlprev|lignes">' +
+        pl.items.map(function (it) { var p = pill[it.action]; return '<tr><td>' + it.line + '</td><td><b>' + esc(it.ref) + '</b></td><td><span class="pill" style="background:' + p[1] + '">' + p[0] + '</span></td><td style="white-space:normal">' + (it.action === "error" ? '<span style="color:var(--red)">' + esc(it.error) + '</span>' : esc(it.changes.join(" ; "))) + '</td></tr>'; }).join("") + '</tbody></table></div>' + '</div></div>';
+    }
+    h += '<div class="box"><div class="hd">Importer des outils depuis Excel</div><div class="bd"><p class="muted" style="margin-bottom:12px">Choisissez un fichier <b>.xlsx</b> (ou .csv) au format de l\'export. Un outil dont la référence existe est mis à jour, une référence inconnue crée un nouvel outil. <b>Une cellule vide ne change rien</b>, et rien n\'est jamais supprimé. Un stock différent est enregistré comme un mouvement « Inventaire » dans l\'historique. Vous verrez un aperçu avant que quoi que ce soit soit enregistré.</p>' +
+      '<input type="file" id="xlfile" accept=".xlsx,.csv"></div></div>';
+    return h;
+  }
+  function wireXl() {
+    function rows() { return [XL_HEAD].concat(S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) { return [t.ref, t.label, t.famille || "", t.emplacement || "", t.barcode || "", t.stock, t.seuil, t.desired, t.price || 0]; })); }
+    document.getElementById("xlexport").addEventListener("click", function () { download(xlsxBlob(rows()), "outils_" + nowIso().slice(0, 10) + ".xlsx"); });
+    document.getElementById("xltemplate").addEventListener("click", function () { download(xlsxBlob([XL_HEAD]), "modele_import_outils.xlsx"); });
+    var f = document.getElementById("xlfile");
+    f.addEventListener("change", function () {
+      var file = f.files[0]; if (!file) { return; }
+      xlState.plan = null; xlState.msg = null; xlState.error = ""; xlState.name = file.name;
+      var ext = file.name.split(".").pop().toLowerCase();
+      if (file.size > 2 * 1024 * 1024) { xlState.error = "Fichier trop gros (2 Mo maximum)."; render(); return; }
+      var done = function (r) { var pl = xlPlan(r); if (pl.fatal) { xlState.error = pl.fatal; } else { xlState.plan = pl; } render(); };
+      var fail = function () { xlState.error = "Fichier illisible : utilisez un fichier .xlsx ou .csv."; render(); };
+      if (ext === "xlsx") { file.arrayBuffer().then(readXlsx).then(done).catch(fail); }
+      else if (ext === "csv") { file.text().then(function (t) { done(parseCsv(t)); }).catch(fail); }
+      else { xlState.error = "Format non accepté : utilisez .xlsx ou .csv."; render(); }
+    });
+    var c = document.getElementById("xlclose"); if (c) { c.addEventListener("click", function () { xlState.plan = null; render(); }); }
+    var ok = document.getElementById("xlconfirm");
+    if (ok) { ok.addEventListener("click", function () { xlState.msg = xlApply(xlState.plan); xlState.plan = null; render(); window.scrollTo(0, 0); }); }
+  }
+
+  /* ---------- Supprimer des outils (comme supprimer.php) : un par un avec affichage du suivant, ou par lot ---------- */
+  var sup = { n: 0, fam: "", flash: null, noask: false };
+  function delTool(ref) {   // suppression définitive : outil, historique de ses mouvements, suivi, ruptures, liste de scan
+    S.tools = S.tools.filter(function (t) { return t.ref !== ref; });
+    S.moves = S.moves.filter(function (m) { return m.ref !== ref; });
+    delete S.status[ref];
+    S.rup = S.rup.filter(function (r) { return r.ref !== ref; });
+    S.of.lines = S.of.lines.filter(function (l) { return l.ref !== ref; });
+    save();
+  }
+  function supList() { return S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).filter(function (t) { return !sup.fam || (t.famille || "").toLowerCase() === sup.fam; }); }
+  function vSup() {
+    var list = supList(), total = list.length, f = familles(), keys = Object.keys(f).sort();
+    if (sup.n > Math.max(0, total - 1)) { sup.n = Math.max(0, total - 1); }
+    var h = '<h1>Supprimer des outils</h1><div class="banner warn"><span class="ic">⚠</span><div class="grow">La suppression est <b>définitive</b> : l\'outil, son stock, l\'historique de ses mouvements, son suivi de commande, ses ruptures, sa famille et son emplacement sont effacés. Dans cette démo, « Remettre la démo à zéro » restaure tout.</div></div>';
+    if (sup.flash) { h += '<div class="banner ' + (sup.flash.ok ? "ok" : "ko") + '"><span class="ic">' + (sup.flash.ok ? "✓" : "✕") + '</span><div class="grow"><b>' + esc(sup.flash.msg) + '</b></div></div>'; }
+    if (keys.length) { h += '<div class="row" style="justify-content:flex-start"><label class="muted">Ne montrer que la famille : <select id="supfam" style="min-width:0"><option value="">Toutes (' + S.tools.length + ' outils)</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '"' + (sup.fam === k ? " selected" : "") + '>' + esc(f[k]) + '</option>'; }).join("") + '</select></label></div>'; }
+    h += '<div class="box"><div class="hd">1. Un par un : le suivant s\'affiche après chaque suppression</div><div class="bd">';
+    if (!total) { h += '<p>' + (sup.fam ? "Aucun outil dans cette famille." : "Il n'y a plus aucun outil.") + '</p>'; }
+    else {
+      var t = list[sup.n], nb = S.moves.filter(function (m) { return m.ref === t.ref; }).length;
+      h += '<div class="muted">Outil ' + (sup.n + 1) + ' sur ' + total + '</div><div style="font-size:30px;font-weight:700;color:var(--navy);line-height:1.1;margin:4px 0 10px">' + esc(t.ref) + '</div>' +
+        '<table style="max-width:560px"><tbody><tr><td class="muted">Désignation</td><td><b>' + esc(t.label) + '</b></td></tr><tr><td class="muted">Famille</td><td><b>' + (t.famille ? esc(t.famille) : "—") + '</b></td></tr><tr><td class="muted">Emplacement</td><td><b>' + (t.emplacement ? esc(t.emplacement) : "—") + '</b></td></tr>' +
+        '<tr><td class="muted">Stock</td><td><b>' + t.stock + '</b>' + (t.seuil > 0 ? ' <span class="muted">(seuil mini ' + t.seuil + ')</span>' : "") + '</td></tr><tr><td class="muted">Prix unitaire</td><td><b>' + (t.price > 0 ? fmtEur(t.price) : "—") + '</b></td></tr><tr><td class="muted">Historique</td><td><b>' + nb + ' mouvement(s) de stock</b> (supprimés avec l\'outil)</td></tr></tbody></table>' +
+        '<div class="row" style="justify-content:flex-start;margin-top:16px"><button type="button" class="btn-save" id="supdel" style="background:var(--red-btn)">🗑 Supprimer cet outil et afficher le suivant</button>' +
+        (sup.n + 1 < total ? '<button type="button" class="btn-save" id="supnext">Garder, afficher le suivant →</button>' : "") + (sup.n > 0 ? '<button type="button" class="btn-undo" id="supprev">← Précédent</button>' : "") + '</div>' +
+        '<p style="margin-top:12px"><label><input type="checkbox" id="supnoask"' + (sup.noask ? " checked" : "") + '> Ne plus me demander confirmation à chaque suppression</label></p>';
+    }
+    h += '</div></div><div class="box" style="margin-top:20px"><div class="hd">2. Par lot : cocher plusieurs outils</div><div class="bd">';
+    if (!total) { h += '<p class="muted">Rien à afficher.</p>'; }
+    else {
+      h += '<div class="row" style="justify-content:flex-start;margin-bottom:10px"><input type="search" id="supq" placeholder="Rechercher (référence, désignation, emplacement)…" style="font:inherit;height:38px;padding:0 12px;border:1px solid #c9cfd8;border-radius:8px;min-width:280px"><button type="button" class="btn-undo" id="supvis">Cocher les outils affichés</button><button type="button" class="btn-undo" id="supunc">Tout décocher</button><span class="muted" id="supcnt"></span></div>' +
+        '<div style="max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:10px"><table><thead><tr><th></th><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock</th></tr></thead><tbody>' +
+        list.map(function (o) { return '<tr class="suprow" data-txt="' + esc((o.ref + " " + o.label + " " + (o.famille || "") + " " + (o.emplacement || "")).toLowerCase()) + '"><td><input type="checkbox" class="supone" data-ref="' + esc(o.ref) + '" aria-label="' + esc(o.ref) + '"></td><td><b>' + esc(o.ref) + '</b></td><td>' + esc(o.label) + '</td><td>' + esc(o.famille || "") + '</td><td>' + esc(o.emplacement || "") + '</td><td class="num">' + o.stock + '</td></tr>'; }).join("") + '</tbody></table></div>' +
+        '<div class="row" style="justify-content:flex-start;margin-top:14px"><label>Pour confirmer, tapez <b>SUPPRIMER</b> : <input type="text" id="supword" autocomplete="off" style="font:inherit;height:38px;width:140px;padding:0 10px;border:1px solid #c9cfd8;border-radius:8px"></label><button type="button" class="btn-save" id="supbulk" style="background:var(--red-btn)" disabled>🗑 Supprimer les outils cochés</button></div>';
+    }
+    return h + '</div></div>';
+  }
+  function wireSup() {
+    var d = document.getElementById("supdel");
+    if (d) {
+      d.addEventListener("click", function () {
+        var t = supList()[sup.n];
+        if (!document.getElementById("supnoask").checked && !confirm("Supprimer définitivement " + t.ref + " ?")) { return; }
+        delTool(t.ref); sup.flash = { ok: true, msg: "Outil « " + t.ref + " » supprimé définitivement." }; render();
+      });
+      document.getElementById("supnoask").addEventListener("change", function (e) { sup.noask = e.target.checked; });
+    }
+    var nx = document.getElementById("supnext"); if (nx) { nx.addEventListener("click", function () { sup.n++; sup.flash = null; render(); }); }
+    var pv = document.getElementById("supprev"); if (pv) { pv.addEventListener("click", function () { sup.n--; sup.flash = null; render(); }); }
+    var fm = document.getElementById("supfam"); if (fm) { fm.addEventListener("change", function () { sup.fam = fm.value; sup.n = 0; sup.flash = null; render(); }); }
+    var q = document.getElementById("supq"); if (!q) { return; }
+    var rows = document.querySelectorAll(".suprow"), ones = document.querySelectorAll(".supone"), cnt = document.getElementById("supcnt"), word = document.getElementById("supword"), btn = document.getElementById("supbulk");
+    function checked() { var c = 0; ones.forEach(function (o) { if (o.checked) { c++; } }); return c; }
+    function upd() { var c = checked(); cnt.textContent = c + " coché(s)"; btn.disabled = !(c > 0 && word.value.trim() === "SUPPRIMER"); btn.textContent = c > 0 ? "🗑 Supprimer les " + c + " outil(s) cochés" : "🗑 Supprimer les outils cochés"; }
+    var supRows = Array.prototype.slice.call(rows), supPg = rmPager(supRows, supRows.length ? supRows[0].closest(".tablewrap") || supRows[0].closest("table") : q, { per: 20, unit: "outils" });
+    supRows.forEach(function (r) { r.rmOk = true; });
+    q.addEventListener("input", function () { var t = q.value.trim().toLowerCase(); supPg.set(supRows.filter(function (r) { r.rmOk = !t || r.getAttribute("data-txt").indexOf(t) >= 0; return r.rmOk; })); });
+    document.getElementById("supvis").addEventListener("click", function () { rows.forEach(function (r) { if (r.rmOk) { r.querySelector(".supone").checked = true; } }); upd(); });   // tous les outils trouvés, sur toutes les pages
+    document.getElementById("supunc").addEventListener("click", function () { ones.forEach(function (o) { o.checked = false; }); upd(); });
+    ones.forEach(function (o) { o.addEventListener("change", upd); }); word.addEventListener("input", upd);
+    btn.addEventListener("click", function () {
+      var refs = []; ones.forEach(function (o) { if (o.checked) { refs.push(o.getAttribute("data-ref")); } });
+      if (!confirm("Supprimer définitivement " + refs.length + " outil(s) ? Cette action est irréversible.")) { return; }
+      refs.forEach(delTool); sup.flash = { ok: true, msg: refs.length + " outil(s) supprimé(s) définitivement." }; render();
+    });
+    upd();
+  }
+
+  var hist = { q: "", sens: "", days: 0, limit: 200 };
+  function histRows() {
+    var q = hist.q.trim().toLowerCase(), lim = hist.days ? Date.now() - hist.days * 86400000 : 0;
+    return S.moves.filter(function (m) {
+      if (hist.sens === "out" && !(m.qty < 0)) { return false; } if (hist.sens === "in" && !(m.qty > 0)) { return false; }
+      if (lim && new Date(m.t).getTime() < lim) { return false; }
+      return !q || (m.ref + " " + m.label + " " + m.who).toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  function vHisto() {
+    var rows = histRows(), sel = function (v, c) { return v === c ? " selected" : ""; };
+    return '<h1>Historique des mouvements</h1><p class="intro">Qui, quand, quel outil, combien et pour quelle machine. Les annulations restent visibles.</p>' +
+      '<div class="row" style="justify-content:flex-start;gap:10px">' +
+        '<input type="search" id="hq" placeholder="Outil, machine, OF, personne…" value="' + esc(hist.q) + '" style="font:inherit;font-size:16px;height:42px;flex:1;min-width:220px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px">' +
+        '<select id="hsens"><option value="">Entrées et sorties</option><option value="out"' + sel(hist.sens, "out") + '>Sorties</option><option value="in"' + sel(hist.sens, "in") + '>Entrées</option></select>' +
+        '<select id="hdays"><option value="0">Toute la période</option><option value="7"' + sel(String(hist.days), "7") + '>7 derniers jours</option><option value="30"' + sel(String(hist.days), "30") + '>30 derniers jours</option><option value="90"' + sel(String(hist.days), "90") + '>90 derniers jours</option></select>' +
+        '<button type="button" class="btn-undo" id="hcsv">⬇ Exporter en CSV</button></div>' +
+      '<p class="muted">' + rows.length + ' mouvement(s)</p>' +
+      '<div class="box"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Qui</th><th>Outil</th><th class="num">Qté</th><th>Libellé</th></tr></thead><tbody data-pg="hist|mouvements">' +
+      rows.map(function (m) { return '<tr><td>' + fmtDate(m.t) + '</td><td>' + esc(m.who) + '</td><td>' + esc(m.ref) + '</td><td class="num ' + (m.qty > 0 ? "qplus" : "qmin") + '">' + (m.qty > 0 ? "+" : "") + m.qty + '</td><td>' + esc(m.label) + '</td></tr>'; }).join("") +
+      (rows.length ? '' : '<tr><td colspan="5" class="muted">Aucun mouvement ne correspond.</td></tr>') +
+      '</tbody></table></div></div>';
+  }
+  function csvCell(v) { v = String(v == null ? "" : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function csvDownload(rows, name) { download(new Blob(["\ufeff" + rows.map(function (r) { return r.map(csvCell).join(";"); }).join("\r\n")], { type: "text/csv;charset=utf-8" }), name); }
+  function wireHisto() {
+    var q = document.getElementById("hq");
+    q.addEventListener("input", function (e) { hist.q = e.target.value; hist.limit = 200; pgReset("hist"); var p = q.selectionStart; render(); var n = document.getElementById("hq"); n.focus(); n.setSelectionRange(p, p); });
+    document.getElementById("hsens").addEventListener("change", function (e) { hist.sens = e.target.value; hist.limit = 200; pgReset("hist"); render(); });
+    document.getElementById("hdays").addEventListener("change", function (e) { hist.days = parseInt(e.target.value, 10) || 0; hist.limit = 200; pgReset("hist"); render(); });
+    document.getElementById("hcsv").addEventListener("click", function () { csvDownload([["Date", "Qui", "Outil", "Quantité", "Libellé"]].concat(histRows().map(function (m) { return [fmtDate(m.t), m.who, m.ref, m.qty, m.label]; })), "historique_mouvements.csv"); });
+
+  }
+
+  // Même logique que inventaire.php : un écart de stock devient un mouvement « Inventaire », seuil/désiré mis à jour
+  var saisieMsg = null;
+  function vSaisie() {
+    var h = '<h1>Saisie rapide : stock et seuils</h1>' +
+      '<p class="intro">Tapez le <b>stock compté</b> en magasin pour chaque outil, puis réglez le <b>seuil mini</b> et le <b>stock désiré</b>. Laissez « Stock compté » vide pour ne pas toucher au stock ; videz un seuil pour le supprimer. Un seul bouton enregistre tout ; chaque écart de stock est tracé dans l\'historique comme « Inventaire ».</p>';
+    if (saisieMsg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow">' + esc(saisieMsg) + '</div></div>'; saisieMsg = null; }
+    h += famDatalist() + '<form id="saisieform" autocomplete="off"><p style="margin:0 0 10px"><input type="search" id="sq" placeholder="Filtrer la liste : référence, désignation, famille…" style="font:inherit;font-size:16px;height:42px;width:100%;max-width:460px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px"></p><div class="box"><div class="tablewrap" style="max-height:68vh;overflow:auto"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
+      S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) {
+        var sv = t.seuil > 0 ? t.seuil : "", dv = t.desired > 0 ? t.desired : "";
+        return '<tr><td>' + esc(t.ref) + '</td><td>' + esc(t.label) + '</td>' +
+          '<td><input type="text" list="dl-fam" maxlength="100" style="width:130px;text-align:left" data-f="famille" data-ref="' + esc(t.ref) + '" data-orig="' + esc(t.famille || "") + '" value="' + esc(t.famille || "") + '" aria-label="Famille de ' + esc(t.ref) + '"></td>' +
+          '<td><input type="text" maxlength="100" style="width:150px;text-align:left" data-f="empl" data-ref="' + esc(t.ref) + '" data-orig="' + esc(t.emplacement || "") + '" value="' + esc(t.emplacement || "") + '" aria-label="Emplacement de ' + esc(t.ref) + '"></td>' +
+          '<td class="num">' + t.stock + '</td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="counted" data-ref="' + esc(t.ref) + '" placeholder="' + t.stock + '"></td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="seuil" data-ref="' + esc(t.ref) + '" data-orig="' + sv + '" value="' + sv + '"></td>' +
+          '<td class="num"><input type="number" min="0" step="1" data-f="desired" data-ref="' + esc(t.ref) + '" data-orig="' + dv + '" value="' + dv + '"></td>' +
+          '<td class="num"><input type="number" min="0" step="any" style="width:100px" data-f="price" data-ref="' + esc(t.ref) + '" data-orig="' + (t.price > 0 ? t.price : "") + '" value="' + (t.price > 0 ? t.price : "") + '"></td></tr>';
+      }).join("") +
+      '</tbody></table></div></div><div class="savebar"><span id="nchg" class="muted">Aucune modification</span><button type="submit" class="btn-save">Enregistrer tout</button></div></form>';
+    return h;
+  }
+
+  var saisiePg = null, saisieRows = [];
+  function wireSaisie() {
+    var form = document.getElementById("saisieform");
+    saisieRows = Array.prototype.slice.call(form.querySelectorAll("tbody tr"));
+    saisiePg = rmPager(saisieRows, form.querySelector(".box"), { per: 20, unit: "outils" });   // les cases des autres pages restent dans le formulaire
+    form.querySelectorAll("input").forEach(function (el) {
+      el.addEventListener("input", function () {
+        var orig = el.dataset.orig !== undefined ? el.dataset.orig : "";
+        if (el.dataset.f === "counted") { el.classList.toggle("changed", el.value !== ""); } else { el.classList.toggle("changed", el.value !== orig); }
+        var n = form.querySelectorAll("input.changed").length, c = document.getElementById("nchg");
+        c.textContent = n ? n + " modification(s) non enregistrée(s)" : "Aucune modification"; c.style.color = n ? "#8a5a00" : ""; c.style.fontWeight = n ? "600" : "";
+      });
+    });
+    var sq = document.getElementById("sq");
+    sq.addEventListener("input", function () {
+      var q = sq.value.trim().toLowerCase();
+      saisiePg.set(saisieRows.filter(function (tr) { var tx = tr.cells[0].textContent + " " + tr.cells[1].textContent + " " + tr.querySelector('[data-f="famille"]').value; return !q || tx.toLowerCase().indexOf(q) >= 0; }));
+    });
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var nbm = 0, nbs = 0, errs = [], plan = [];
+      S.tools.forEach(function (t) {
+        var c = form.querySelector('[data-f="counted"][data-ref="' + t.ref + '"]').value.trim();
+        var s = form.querySelector('[data-f="seuil"][data-ref="' + t.ref + '"]').value.trim();
+        var d = form.querySelector('[data-f="desired"][data-ref="' + t.ref + '"]').value.trim();
+        var p = { t: t };
+        var pr = form.querySelector('[data-f="price"][data-ref="' + t.ref + '"]').value.trim().replace(",", ".");
+        if (pr !== "" && (isNaN(pr) || parseFloat(pr) < 0)) { errs.push(t.ref + " : prix non valide"); }
+        else if ((pr === "" ? 0 : parseFloat(pr)) !== (t.price || 0)) { p.price = pr === "" ? 0 : parseFloat(pr); }
+        var fm = form.querySelector('[data-f="famille"][data-ref="' + t.ref + '"]').value.replace(/\s+/g, " ").trim(), em = form.querySelector('[data-f="empl"][data-ref="' + t.ref + '"]').value.replace(/\s+/g, " ").trim();
+        if (fm !== (t.famille || "")) { p.fam = fm; } if (em !== (t.emplacement || "")) { p.emp = em; }
+        if (c !== "") { var q = parseFloat(c); if (q < 0) { errs.push(t.ref + " : quantité négative ignorée"); } else if (q !== t.stock) { p.stock = q; } }
+        var sv = s === "" ? 0 : parseInt(s, 10), dv = d === "" ? 0 : parseInt(d, 10);
+        if (sv < 0 || dv < 0) { errs.push(t.ref + " : valeur négative ignorée"); }
+        else { if (sv !== (t.seuil || 0)) { p.seuil = sv; } if (dv !== (t.desired || 0)) { p.desired = dv; } }
+        plan.push(p);
+      });
+      if (errs.length) { saisieMsg = null; alert("Rien n'a été enregistré à cause d'erreurs :\n" + errs.join("\n")); return; }
+      plan.forEach(function (p) {
+        if (p.stock !== undefined) {
+          var delta = p.stock - p.t.stock;
+          S.moves.unshift({ t: nowIso(), ref: p.t.ref, qty: delta, label: "Inventaire (saisie rapide) : " + p.t.stock + " → " + p.stock, who: "vous (démo)" });
+          p.t.stock = p.stock; nbm++;
+        }
+        if (p.seuil !== undefined) { p.t.seuil = p.seuil; nbs++; }
+        if (p.desired !== undefined) { p.t.desired = p.desired; nbs++; }
+        if (p.price !== undefined) { p.t.price = p.price; nbs++; }
+        if (p.fam !== undefined) { p.t.famille = p.fam; nbs++; }
+        if (p.emp !== undefined) { p.t.emplacement = p.emp; nbs++; }
+      });
+      cleanStatus();
+      save();
+      saisieMsg = "Enregistré : " + nbm + " mouvement(s) de stock, " + nbs + " seuil(s) modifié(s).";
+      render(); window.scrollTo(0, 0);
+    });
+  }
+
+  // Catalogue des outils (comme catalogue.php du module, onglet « Outils ») : recherche, filtres famille / état, fiche, étiquette, sortie
+  var ct = { q: "", fam: "", etat: "", sort: "ref", dir: 1 }, ctPending = null;
+  function ctNorm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function vCat() {
+    var fams = {}, cnt = { r: 0, y: 0, g: 0, n: 0 }, col = { r: "var(--red)", y: "var(--yellow)", g: "var(--green)", n: "var(--grey)" };
+    S.tools.forEach(function (t) { var f = t.famille || "(sans famille)"; fams[f] = (fams[f] || 0) + 1; cnt[status(t).k]++; });
+    var fk = Object.keys(fams).sort(function (a, b) { return (a === "(sans famille)") - (b === "(sans famille)") || a.localeCompare(b, "fr"); });
+    function chip(grp, v, txt, n, on) { return '<button type="button" class="ct-chip' + (on ? " on" : "") + '" data-ctg="' + grp + '" data-v="' + esc(v) + '">' + txt + (n !== null ? '<span class="n">' + n + '</span>' : "") + '</button>'; }
+    var h = '<style>.ct-chip{padding:6px 14px;border:2px solid #bbb;border-radius:18px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;background:#fff}.ct-chip .n{font-weight:400;opacity:.75;margin-left:5px}.ct-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}.ct-dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}.ct-empl{display:inline-block;min-width:44px;text-align:center;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--navy-soft)}.ct-act a,.ct-act button{display:inline-block;padding:4px 10px;margin:1px;border:1px solid #c4c9d1;border-radius:6px;background:#fff;color:var(--navy);font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}.ct-act button.out{border-color:#1f66c2;color:#1f66c2}th.ctsort{cursor:pointer;user-select:none}th.ctsort:after{content:" ⇅";opacity:.35}th.ctsort.asc:after{content:" ▲";opacity:.8}th.ctsort.desc:after{content:" ▼";opacity:.8}</style>';
+    h += '<div class="row" style="justify-content:space-between;align-items:center"><h1>Catalogue des outils</h1><a href="#saisie" class="btn-undo" style="text-decoration:none" title="Dans l\'outil réel : fiche de création d\'un outil Dolibarr. Dans la démo : ajout par la Saisie rapide ou l\'import Excel.">+ Nouvel outil</a></div>';
+    h += '<p style="margin:12px 0"><input type="search" id="ctq" value="' + esc(ct.q) + '" placeholder="Rechercher un outil : référence, désignation, emplacement…" aria-label="Rechercher un outil" autocomplete="off" style="font:inherit;font-size:18px;height:48px;width:100%;max-width:720px;padding:0 14px;border:2px solid var(--navy);border-radius:10px;box-sizing:border-box"></p>';
+    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">Famille :</span>' + chip("fam", "", "Toutes", S.tools.length, ct.fam === "") + fk.map(function (f) { return chip("fam", f, esc(f), fams[f], ct.fam === f); }).join("") + '</div>';
+    h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">État :</span>' + chip("etat", "", "Tous", S.tools.length, ct.etat === "") +
+      [["r", "▼ Sous le seuil"], ["y", "▲ Proche du seuil"], ["g", "✓ OK"], ["n", "– Pas de seuil"]].filter(function (e) { return e[0] !== "n" || cnt.n; }).map(function (e) { return chip("etat", e[0], '<i class="ct-dot" style="background:' + col[e[0]] + '"></i>' + e[1], cnt[e[0]], ct.etat === e[0]); }).join("") + '</div>';
+    h += '<div class="muted" id="ctinfo" style="margin:6px 0 8px"></div>';
+    var heads = [["ref", "Référence", ""], ["label", "Désignation", ""], ["famille", "Famille", ""], ["emplacement", "Emplacement", ""], ["stock", "Stock", "num"], [null, "Seuil mini", "num"], ["etat", "État", ""], [null, "Actions", ""]];
+    h += '<div class="box"><div class="tablewrap"><table id="cttable"><thead><tr>' + heads.map(function (x) { return '<th class="' + x[2] + (x[0] ? " ctsort" + (ct.sort === x[0] ? (ct.dir === 1 ? " asc" : " desc") : "") : "") + '"' + (x[0] ? ' data-k="' + x[0] + '"' : "") + '>' + x[1] + '</th>'; }).join("") + '</tr></thead><tbody>';
+    var ord = { r: 0, y: 1, g: 2, n: 3 }, cmp = new Intl.Collator("fr", { numeric: true, sensitivity: "base" });
+    var list = S.tools.slice().sort(function (a, b) {
+      var r, k = ct.sort;
+      if (k === "stock") { r = a.stock - b.stock; }
+      else if (k === "etat") { r = (ord[status(a).k] - ord[status(b).k]) || ((a.seuil > 0 ? a.stock / a.seuil : 99) - (b.seuil > 0 ? b.stock / b.seuil : 99)); }
+      else { r = cmp.compare(a[k] || "￿", b[k] || "￿"); }
+      return (r || cmp.compare(a.ref, b.ref)) * ct.dir;
+    });
+    h += list.map(function (t) {
+      var s = status(t), st = S.status[t.ref];
+      return '<tr class="ctrow" data-s="' + esc(ctNorm([t.ref, t.label, t.famille, t.emplacement, t.barcode].join(" "))) + '" data-fam="' + esc(t.famille || "(sans famille)") + '" data-etat="' + s.k + '">' +
+        '<td><b>' + esc(t.ref) + '</b></td><td style="white-space:normal">' + esc(t.label) + '</td><td>' + (t.famille ? esc(t.famille) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (t.emplacement ? '<span class="ct-empl">' + esc(t.emplacement) + '</span>' : '<span class="muted">—</span>') + '</td>' +
+        '<td class="num" style="font-size:16px"><b>' + t.stock + '</b></td><td class="num">' + (t.seuil > 0 ? t.seuil : '<span class="muted">—</span>') + '</td>' +
+        '<td><i class="ct-dot" style="background:' + col[s.k] + '"></i>' + s.ic + ' ' + s.txt + (st && (s.k === "r" || s.k === "y") ? '<br><b style="font-size:12.5px;opacity:.8">' + esc(st.statut) + '</b>' : "") + '</td>' +
+        '<td class="ct-act"><a href="#seuils" class="ctfiche" data-ref="' + esc(t.ref) + '" title="Voir cet outil dans le tableau des seuils">Fiche</a><a href="#etiquettes" class="etqone" data-ref="' + esc(t.ref) + '" title="Imprimer l\'étiquette de cet outil">🖨 Étiquette</a>' + (t.stock > 0 ? '<button type="button" class="out" data-ref="' + esc(t.ref) + '" title="Ajouter cet outil à la page de scan, en sortie">Sortie</button>' : "") + '</td></tr>';
+    }).join("");
+    h += '</tbody></table><div class="muted" id="ctnone" style="display:none;padding:18px;text-align:center">Aucun outil ne correspond à la recherche.</div></div></div>';
+    h += '<p class="muted" style="margin-top:12px">Astuce : avec la douchette, scannez l\'étiquette dans la barre de recherche, puis <b>Entrée</b> ouvre l\'outil si un seul correspond. Cliquez sur un titre de colonne pour trier. Dans l\'outil réel, cette page s\'ouvre par l\'onglet « Outils ».</p>';
+    return h;
+  }
+  function wireCat() {
+    var input = document.getElementById("ctq"), rows = Array.prototype.slice.call(document.querySelectorAll("#cttable .ctrow")), matched = [], first = true;
+    var pg = rmPager(rows, document.getElementById("cttable").closest(".box"), { per: 20, unit: "outils", key: "catalogue" });
+    function apply() {
+      ct.q = input.value; var words = ctNorm(ct.q).split(/\s+/).filter(Boolean), n = 0, cf = { "": 0 }, ce = { "": 0 }; matched = [];
+      rows.forEach(function (r) {
+        var f = r.getAttribute("data-fam"), e = r.getAttribute("data-etat"), s = r.getAttribute("data-s"), okq = true;
+        for (var i = 0; okq && i < words.length; i++) { if (s.indexOf(words[i]) < 0) { okq = false; } }
+        var okf = !ct.fam || f === ct.fam, oke = !ct.etat || e === ct.etat, ok = okq && okf && oke;
+        if (okq && oke) { cf[""]++; cf[f] = (cf[f] || 0) + 1; }   // compteurs des boutons : recherche + l'autre filtre
+        if (okq && okf) { ce[""]++; ce[e] = (ce[e] || 0) + 1; }
+        if (ok) { n++; matched.push(r); }
+      });
+      pg.set(matched, first); first = false;
+      document.querySelectorAll(".ct-chip").forEach(function (c) { var sp = c.querySelector(".n"), m = c.getAttribute("data-ctg") === "fam" ? cf : ce; if (sp) { sp.textContent = m[c.getAttribute("data-v")] || 0; } });
+      document.getElementById("ctinfo").textContent = n === rows.length ? rows.length + " outils" : n + " outil(s) trouvé(s) sur " + rows.length;
+      document.getElementById("ctnone").style.display = n ? "none" : "block";
+    }
+    input.addEventListener("input", apply);
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") { return; }
+      e.preventDefault();
+      if (matched.length === 1) { matched[0].querySelector(".ctfiche").click(); }
+    });
+    document.querySelectorAll(".ct-chip").forEach(function (b) { b.addEventListener("click", function () {
+      var g = b.getAttribute("data-ctg"); ct[g] = b.getAttribute("data-v");
+      document.querySelectorAll('.ct-chip[data-ctg="' + g + '"]').forEach(function (c) { c.classList.toggle("on", c === b); }); apply();
+    }); });
+    document.querySelectorAll("#cttable th.ctsort").forEach(function (th) { th.addEventListener("click", function () {
+      var k = th.getAttribute("data-k"); ct.dir = ct.sort === k ? -ct.dir : 1; ct.sort = k; render(); var i = document.getElementById("ctq"); if (i) { i.focus(); }
+    }); });
+    document.querySelectorAll(".ctfiche").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); sf.q = a.getAttribute("data-ref"); location.hash = "seuils"; }); });
+    document.querySelectorAll("#cttable button.out").forEach(function (b) { b.addEventListener("click", function () { ctPending = b.getAttribute("data-ref"); location.hash = "scan"; }); });
+    document.querySelectorAll(".etqone").forEach(function (a) { a.addEventListener("click", function (e) {
+      e.preventDefault(); var r = a.getAttribute("data-ref");
+      S.tools.forEach(function (t) { if (t.ref === r) { delete etq.off[t.ref]; } else { etq.off[t.ref] = 1; } });
+      etq.copies = 1; etq.q = ""; etq.fam = ""; location.hash = "etiquettes";
+    }); });
+    apply(); input.focus();
+  }
+
+  var VIEWS = { accueil: vAccueil, catalogue: vCat, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
+  var LABELS = { accueil: "Accueil", catalogue: "Catalogue des outils", scan: "Scan entrée / sortie", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)" };
+  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan entrée / sortie", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
+  function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
+
+  function render() {
+    var v = current(), el = document.getElementById("view");
+    if ((v === "scan" || v === "of") && ctPending) { var cr = ctPending; ctPending = null; S.of.sens = 1; ofAdd(cr); return; }   // bouton « Sortie » du catalogue
+    cleanStatus();
+    el.innerHTML = VIEWS[v]();
+    var cv = v === "of" ? "scan" : v, g = GROUPS.filter(function (x) { return x[1].indexOf(cv) >= 0; })[0];
+    document.getElementById("nav").innerHTML = GROUPS.map(function (x) { return '<a href="#' + x[1][0] + '" data-v="' + x[1][0] + '" class="' + (x[1].length > 1 ? "grp" : "") + (x === g ? " on" : "") + '">' + x[0] + '</a>'; }).join("");
+    document.getElementById("subnav").innerHTML = g && g[1].length > 1 ? g[1].map(function (p) { return '<a href="#' + p + '" data-v="' + p + '" class="' + (p === cv ? "on" : "") + '">' + LABELS[p] + '</a>'; }).join("") : "";
+    autoPagers();
+    if (v === "catalogue") { wireCat(); }
+    if (v === "scan" || v === "of") { wireOf(); }
+    if (v === "seuils") { wireSeuils(); }
+    if (v === "utilisation") { wireUtil(); }
+    if (v === "ruptures") { wireRupt(); }
+    if (v === "etiquettes") { wireEtiq(); }
+    if (v === "excel") { wireXl(); }
+    if (v === "supprimer") { wireSup(); }
+    if (v === "saisie") { wireSaisie(); }
+    if (v === "historique") { wireHisto(); }
+  }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    S = fresh(); ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
+  });
+  window.addEventListener("hashchange", function () { sup.flash = null; ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
+  render();
+})();
+</script>
+<script>setTimeout(function(){var r;try{r=(function(){return "demo saisie: prix invalides="+document.querySelectorAll("[data-f=price]:invalid").length+" pager="+(document.querySelector(".rm-pager")?"oui":"non (16 outils)");})();}catch(e){r='ERREUR JS: '+e.message;}document.body.setAttribute('data-test',r);},600);window.addEventListener('error',function(e){document.documentElement.setAttribute('data-err',e.message);});</script></body>
+</html>
+
+
+
+
