@@ -311,6 +311,18 @@ svg text { font-family: var(--font-body); }
     return { set: function (l, keep) { list = l; if (!keep) { page = 1; } draw(); }, page: function () { return page; },
       show: function (el) { var i = list.indexOf(el); if (i < 0) { list = all.slice(); i = all.indexOf(el); } if (i >= 0) { page = Math.floor(i / per) + 1; draw(); } } };
   }
+  // Un emplacement = une seule référence (v1.21.0) : espaces et majuscules ignorés pour comparer
+  function emplKey(e) { return String(e || "").replace(/\s+/g, " ").trim().toLowerCase(); }
+  function emplDoublons() {
+    var by = {};
+    S.tools.forEach(function (t) { var k = emplKey(t.emplacement); if (k) { (by[k] = by[k] || { e: t.emplacement, refs: [] }).refs.push(t.ref); } });
+    return Object.keys(by).map(function (k) { return by[k]; }).filter(function (g) { return g.refs.length > 1; });
+  }
+  function emplBanner(where) {
+    var d = emplDoublons(); if (!d.length) { return ""; }
+    return '<div class="banner warn"><span class="ic">⚠</span><div class="grow"><b>' + d.length + ' emplacement(s) utilisé(s) par plusieurs outils</b> (un emplacement doit correspondre à une seule référence) : ' +
+      d.map(function (g) { return '<b>' + esc(g.e) + '</b> (' + esc(g.refs.join(", ")) + ')'; }).join(" · ") + '. ' + where + '</div></div>';
+  }
   function pgReset(key) { try { sessionStorage.removeItem("rmPg_" + key); } catch (e) {} }
   // Tableaux sans filtre (ruptures, historique, aperçu de l'import) : <tbody data-pg="clé|unité">
   function autoPagers() {
@@ -1059,6 +1071,25 @@ svg text { font-family: var(--font-body); }
       if (err.length) { it.action = "error"; it.error = err.join(" ; "); }
       out.counts[it.action]++; out.items.push(it);
     }
+    // Un emplacement = une seule référence : emplacements après import ; une ligne qui prend un emplacement déjà utilisé passe en erreur
+    var fin = {};
+    S.tools.forEach(function (t) { fin["ref:" + t.ref] = { ref: t.ref, e: t.emplacement || "", k: -1 }; });
+    out.items.forEach(function (it, i) {
+      if (it.action === "error" || it.emplacement === null || it.emplacement === undefined) { return; }
+      var t = it.action === "create" ? null : tool(it.ref), key = t ? "ref:" + t.ref : "new" + i, old = fin[key] ? fin[key].e : "";
+      if (it.emplacement !== old) { fin[key] = { ref: it.ref, e: it.emplacement, k: i }; }
+    });
+    var grp = {};
+    Object.keys(fin).forEach(function (key) { var f = fin[key], k = emplKey(f.e); if (k) { (grp[k] = grp[k] || []).push(f); } });
+    Object.keys(grp).forEach(function (k) {
+      var g = grp[k]; if (g.length < 2) { return; }
+      g.forEach(function (f) {
+        if (f.k < 0) { return; }
+        var it = out.items[f.k]; out.counts[it.action]--; out.counts.error++;
+        it.action = "error"; it.error = "Emplacement « " + f.e + " » déjà utilisé par " + g.filter(function (x) { return x !== f; }).map(function (x) { return x.ref; }).join(", ") + " (un emplacement = une seule référence)";
+      });
+    });
+    out.errors = out.counts.error;
     if (!out.items.length) { out.fatal = "Aucune ligne à importer dans le fichier."; }
     return out;
   }
@@ -1225,6 +1256,7 @@ svg text { font-family: var(--font-body); }
     var h = '<h1>Saisie rapide : stock et seuils</h1>' +
       '<p class="intro">Tapez le <b>stock compté</b> en magasin pour chaque outil, puis réglez le <b>seuil mini</b> et le <b>stock désiré</b>. Laissez « Stock compté » vide pour ne pas toucher au stock ; videz un seuil pour le supprimer. Un seul bouton enregistre tout ; chaque écart de stock est tracé dans l\'historique comme « Inventaire ».</p>';
     if (saisieMsg) { h += '<div class="banner ok"><span class="ic">✓</span><div class="grow">' + esc(saisieMsg) + '</div></div>'; saisieMsg = null; }
+    h += emplBanner("Corrigez-les dans la colonne Emplacement ci-dessous.");
     h += famDatalist() + '<form id="saisieform" autocomplete="off"><p style="margin:0 0 10px"><input type="search" id="sq" placeholder="Filtrer la liste : référence, désignation, famille…" style="font:inherit;font-size:16px;height:42px;width:100%;max-width:460px;padding:0 12px;border:1px solid #c9cfd8;border-radius:10px"></p><div class="box"><div class="tablewrap" style="max-height:68vh;overflow:auto"><table class="inv"><thead><tr><th>Référence</th><th>Désignation</th><th>Famille</th><th>Emplacement</th><th class="num">Stock actuel</th><th class="num">Stock compté</th><th class="num">Seuil mini</th><th class="num">Stock désiré</th><th class="num">Prix unitaire (€ HT)</th></tr></thead><tbody>' +
       S.tools.slice().sort(function (a, b) { return a.ref.localeCompare(b.ref); }).map(function (t) {
         var sv = t.seuil > 0 ? t.seuil : "", dv = t.desired > 0 ? t.desired : "";
@@ -1254,6 +1286,19 @@ svg text { font-family: var(--font-body); }
         c.textContent = n ? n + " modification(s) non enregistrée(s)" : "Aucune modification"; c.style.color = n ? "#8a5a00" : ""; c.style.fontWeight = n ? "600" : "";
       });
     });
+    var empls = Array.prototype.slice.call(form.querySelectorAll('[data-f="empl"]'));
+    function checkDup() {
+      var by = {};
+      empls.forEach(function (el) { var k = emplKey(el.value); if (k) { (by[k] = by[k] || []).push(el); } });
+      empls.forEach(function (el) {
+        var k = emplKey(el.value), g = k ? by[k] : null, dup = !!(g && g.length > 1), m = el.parentNode.querySelector(".dupmsg");
+        el.style.border = dup ? "2px solid var(--red)" : ""; el.style.background = dup ? "#fbeaea" : "";
+        if (dup) { if (!m) { m = document.createElement("span"); m.className = "dupmsg"; m.style.cssText = "display:block;color:var(--red);font-size:12px;font-weight:600;white-space:normal;max-width:170px"; el.parentNode.appendChild(m); }
+          m.textContent = "Aussi : " + g.filter(function (x) { return x !== el; }).map(function (x) { return x.getAttribute("data-ref"); }).join(", "); }
+        else if (m) { m.remove(); }
+      });
+    }
+    empls.forEach(function (el) { el.addEventListener("input", checkDup); }); checkDup();
     var sq = document.getElementById("sq");
     sq.addEventListener("input", function () {
       var q = sq.value.trim().toLowerCase();
@@ -1278,6 +1323,9 @@ svg text { font-family: var(--font-body); }
         else { if (sv !== (t.seuil || 0)) { p.seuil = sv; } if (dv !== (t.desired || 0)) { p.desired = dv; } }
         plan.push(p);
       });
+      var byE = {};
+      plan.forEach(function (p) { var e = p.emp !== undefined ? p.emp : (p.t.emplacement || ""); var k = emplKey(e); if (k) { (byE[k] = byE[k] || []).push(p.t.ref); } });
+      plan.forEach(function (p) { if (p.emp && byE[emplKey(p.emp)].length > 1) { errs.push(p.t.ref + " : l'emplacement « " + p.emp + " » est déjà utilisé par " + byE[emplKey(p.emp)].filter(function (r) { return r !== p.t.ref; }).join(", ") + " (un emplacement = une seule référence)"); } });
       if (errs.length) { saisieMsg = null; alert("Rien n'a été enregistré à cause d'erreurs :\n" + errs.join("\n")); return; }
       plan.forEach(function (p) {
         if (p.stock !== undefined) {
@@ -1308,6 +1356,7 @@ svg text { font-family: var(--font-body); }
     function chip(grp, v, txt, n, on) { return '<button type="button" class="ct-chip' + (on ? " on" : "") + '" data-ctg="' + grp + '" data-v="' + esc(v) + '">' + txt + (n !== null ? '<span class="n">' + n + '</span>' : "") + '</button>'; }
     var h = '<style>.ct-chip{padding:6px 14px;border:2px solid #bbb;border-radius:18px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;background:#fff}.ct-chip .n{font-weight:400;opacity:.75;margin-left:5px}.ct-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}.ct-dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}.ct-empl{display:inline-block;min-width:44px;text-align:center;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--navy-soft)}.ct-act a,.ct-act button{display:inline-block;padding:4px 10px;margin:1px;border:1px solid #c4c9d1;border-radius:6px;background:#fff;color:var(--navy);font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer}.ct-act button.out{border-color:#1f66c2;color:#1f66c2}th.ctsort{cursor:pointer;user-select:none}th.ctsort:after{content:" ⇅";opacity:.35}th.ctsort.asc:after{content:" ▲";opacity:.8}th.ctsort.desc:after{content:" ▼";opacity:.8}</style>';
     h += '<div class="row" style="justify-content:space-between;align-items:center"><h1>Catalogue des outils</h1><a href="#saisie" class="btn-undo" style="text-decoration:none" title="Dans l\'outil réel : fiche de création d\'un outil Dolibarr. Dans la démo : ajout par la Saisie rapide ou l\'import Excel.">+ Nouvel outil</a></div>';
+    h += emplBanner("Corrigez-les dans la Saisie rapide.");
     h += '<p style="margin:12px 0"><input type="search" id="ctq" value="' + esc(ct.q) + '" placeholder="Rechercher un outil : référence, désignation, emplacement…" aria-label="Rechercher un outil" autocomplete="off" style="font:inherit;font-size:18px;height:48px;width:100%;max-width:720px;padding:0 14px;border:2px solid var(--navy);border-radius:10px;box-sizing:border-box"></p>';
     h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">Famille :</span>' + chip("fam", "", "Toutes", S.tools.length, ct.fam === "") + fk.map(function (f) { return chip("fam", f, esc(f), fams[f], ct.fam === f); }).join("") + '</div>';
     h += '<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:8px"><span class="muted" style="min-width:64px">État :</span>' + chip("etat", "", "Tous", S.tools.length, ct.etat === "") +
