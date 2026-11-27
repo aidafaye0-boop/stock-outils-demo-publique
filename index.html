@@ -277,6 +277,10 @@ svg text { font-family: var(--font-body); }
   S.tools.forEach(function (t) { if (t.price === undefined) { t.price = PRICES[t.ref.slice(-4)] || 0; } if (t.barcode === undefined) { t.barcode = ""; } if (t.famille === undefined) { t.famille = (INFOS[t.ref.slice(-4)] || ["", ""])[0]; t.emplacement = (INFOS[t.ref.slice(-4)] || ["", ""])[1]; } });   // états enregistrés avant l'ajout des prix
   if (!S.of) { S.of = { no: "", sens: 1, machine: "", lines: [] }; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  // Machines de l'atelier (comme machines.php, v1.23.0) : noms fictifs dans la démo
+  function ensureMachines() { if (!S.machines) { S.machines = MACHINES.map(function (m) { return { nom: m, type: m.indexOf("Tour") === 0 ? "Tour" : "Fraiseuse", commentaire: "", actif: true }; }); } }
+  ensureMachines();
+  function machineNames() { return S.machines.filter(function (m) { return m.actif; }).map(function (m) { return m.nom; }).sort(function (a, b) { return a.localeCompare(b, "fr", { numeric: true }); }); }
 
   var ofFlash = null, ofResult = null, ofUndoInfo = null, ofCands = null;   // Scan entrée / sortie (liste)
 
@@ -661,7 +665,7 @@ svg text { font-family: var(--font-body); }
       '<div class="row" style="justify-content:flex-start;margin-bottom:14px;gap:16px">' +
         '<span class="row sens"><button type="button" class="o' + (out ? " on" : "") + '" data-ofsens="1">⬆ Picking<small>sortie vers la production</small></button><button type="button" class="i' + (o.sens === 0 ? " on" : "") + '" data-ofsens="0">⬇ Retour<small>de la production</small></button><button type="button" class="r' + (rec ? " on" : "") + '" data-ofsens="2">📦 Réception<small>commande fournisseur</small></button></span>' +
         '<label class="muted" style="display:' + (rec ? "none" : "flex") + ';flex-direction:column;gap:4px;font-size:13.5px">N° d\'OF (facultatif)<input type="text" id="ofno" maxlength="40" placeholder="ex. 12345" value="' + esc(o.no) + '" style="font:inherit;font-size:16px;height:42px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
-        '<label class="muted" style="display:' + (rec ? "none" : "flex") + ';flex-direction:column;gap:4px;font-size:13.5px">Machine<select id="ofmachine"><option value="">Aucune</option>' + MACHINES.map(function (m) { return '<option' + (o.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></label>' +
+        '<label class="muted" style="display:' + (rec ? "none" : "flex") + ';flex-direction:column;gap:4px;font-size:13.5px">Machine<select id="ofmachine"><option value="">Aucune</option>' + machineNames().map(function (m) { return '<option' + (o.machine === m ? " selected" : "") + '>' + esc(m) + '</option>'; }).join("") + '</select></label>' +
       '</div>';
     if (ofCands) {
       h += '<div class="banner warn"><span class="ic">?</span><div class="grow"><b>Plusieurs outils correspondent à « ' + esc(ofCands.code) + ' »</b>. Choisissez :</div></div><div class="box cands" style="margin-bottom:14px">' +
@@ -832,6 +836,84 @@ svg text { font-family: var(--font-body); }
   }
   function wireUtil() {
     document.querySelectorAll("[data-per]").forEach(function (b) { b.addEventListener("click", function () { usePer = +b.getAttribute("data-per"); render(); }); });
+  }
+
+  /* ---------- Machines (comme machines.php) ---------- */
+  var mc = { edit: -1, err: [], flash: null, form: { nom: "", type: "", commentaire: "" } };
+  function mcUsage(nom) {
+    var since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 19), k = nom.toLowerCase(), u = { pieces: 0, nb: 0, last: "" };
+    S.moves.forEach(function (m) {
+      var i = m.label.lastIndexOf(" - Machine : ");
+      if (i < 0 || m.label.slice(i + 13).trim().toLowerCase() !== k) { return; }
+      u.nb++; if (m.t > u.last) { u.last = m.t; }
+      if (m.t < since) { return; }
+      if (m.qty < 0 && m.label.indexOf("Annulation") !== 0) { u.pieces -= m.qty; }
+      if (m.qty > 0 && m.label.indexOf("Annulation sortie") === 0) { u.pieces -= m.qty; }
+    });
+    u.pieces = Math.max(0, u.pieces); return u;
+  }
+  function vMachines() {
+    var list = S.machines.map(function (m, i) { return { m: m, i: i }; }).sort(function (a, b) { return a.m.nom.localeCompare(b.m.nom, "fr", { numeric: true }); });
+    var on = S.machines.filter(function (m) { return m.actif; }).length, f = mc.form;
+    var h = '<h1>Machines</h1><div style="max-width:1000px"><div class="row" style="justify-content:flex-start;margin-bottom:14px">' +
+      '<div class="box" style="padding:12px 18px;margin:0"><b style="font-size:1.6em;display:block">' + on + '</b>en service (proposées au scan)</div>' +
+      '<div class="box" style="padding:12px 18px;margin:0"><b style="font-size:1.6em;display:block">' + (S.machines.length - on) + '</b>hors service</div></div>';
+    if (mc.flash) { h += '<div class="banner ok" role="status"><span class="ic">✓</span><div class="grow"><b>' + esc(mc.flash) + '</b></div></div>'; }
+    if (mc.err.length) { h += '<div class="banner ko" role="alert"><span class="ic">✕</span><div class="grow"><b>Rien n\'a été enregistré :</b><ul style="margin:6px 0 0 18px;padding:0">' + mc.err.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join("") + '</ul></div></div>'; }
+    var types = {}; S.machines.forEach(function (m) { if (m.type) { types[m.type.toLowerCase()] = m.type; } }); ["Rectifieuse", "Tour", "Fraiseuse", "Centre d'usinage"].forEach(function (t) { types[t.toLowerCase()] = t; });
+    h += '<datalist id="mctypes">' + Object.keys(types).sort().map(function (k) { return '<option value="' + esc(types[k]) + '">'; }).join("") + '</datalist>';
+    var editing = mc.edit >= 0 && S.machines[mc.edit];
+    h += '<h2 style="margin:0 0 8px">' + (editing ? 'Modifier « ' + esc(S.machines[mc.edit].nom) + ' »' : 'Ajouter une machine') + '</h2>' +
+      '<form id="mcform" class="box" style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end" autocomplete="off">' +
+      '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Nom de la machine *<input id="mcnom" maxlength="60" required value="' + esc(f.nom) + '" placeholder="ex. Rectifieuse 3" style="font:inherit;height:40px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
+      '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px">Type<input id="mctype" maxlength="60" list="mctypes" value="' + esc(f.type) + '" placeholder="ex. Rectifieuse" style="font:inherit;height:40px;padding:0 10px;border:1px solid #bbb;border-radius:8px;width:170px"></label>' +
+      '<label class="muted" style="display:flex;flex-direction:column;gap:4px;font-size:13.5px;flex:1;min-width:220px">Commentaire<input id="mccom" maxlength="255" value="' + esc(f.commentaire) + '" placeholder="ex. atelier 2, poste de reprise…" style="font:inherit;height:40px;padding:0 10px;border:1px solid #bbb;border-radius:8px"></label>' +
+      '<button type="submit" class="btn-save">' + (editing ? "Enregistrer" : "+ Ajouter") + '</button>' + (editing ? '<button type="button" class="btn-undo" id="mccancel">Annuler</button>' : '') + '</form>';
+    if (editing && mcUsage(S.machines[mc.edit].nom).nb) { h += '<p class="muted" style="margin-top:-6px">Si vous changez le nom, les mouvements déjà enregistrés garderont l\'ancien nom.</p>'; }
+    h += '<div class="box"><div class="tablewrap"><table><thead><tr><th>Machine</th><th>Type</th><th>Commentaire</th><th class="num">Pièces sorties<br>sur 30 jours</th><th>Dernier mouvement</th><th style="text-align:center">État</th><th></th></tr></thead><tbody>' +
+      (list.length ? list.map(function (x) {
+        var m = x.m, u = mcUsage(m.nom);
+        return '<tr style="' + (m.actif ? '' : 'opacity:.55') + '"><td><b>' + esc(m.nom) + '</b></td><td>' + esc(m.type || "") + '</td><td>' + esc(m.commentaire || "") + '</td><td class="num">' + (u.pieces ? '<b>' + u.pieces + '</b>' : '<span class="muted">0</span>') + '</td><td>' + (u.last ? fmtDate(u.last) : '<span class="muted">jamais</span>') + '</td>' +
+          '<td style="text-align:center"><span style="display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:10px;font-size:.85em;font-weight:600;' + (m.actif ? 'background:#e3f3e3;color:#1f6b1f' : 'background:#ececec;color:#555') + '">' + (m.actif ? "En service" : "Hors service") + '</span></td>' +
+          '<td style="white-space:nowrap"><button type="button" class="btn-undo" data-mcedit="' + x.i + '">Modifier</button> <button type="button" class="btn-undo" data-mctoggle="' + x.i + '">' + (m.actif ? "Hors service" : "Remettre en service") + '</button>' + (u.nb ? '' : ' <button type="button" class="btn-undo" data-mcdel="' + x.i + '" style="color:var(--red)">Supprimer</button>') + '</td></tr>';
+      }).join("") : '<tr><td colspan="7" class="muted">Aucune machine. Ajoutez-en une ci-dessus.</td></tr>') +
+      '</tbody></table></div></div>' +
+      '<p class="muted" style="font-size:13.5px">Les machines <b>en service</b> sont proposées dans la liste « Machine » de la page de scan. Une machine hors service n\'est plus proposée, mais son historique reste. Une machine déjà utilisée dans un mouvement ne peut pas être supprimée. L\'activité est lue dans l\'historique des mouvements (pickings avec machine, annulations déduites).</p></div>';
+    return h;
+  }
+  function wireMachines() {
+    function reset(msg) { mc.edit = -1; mc.err = []; mc.flash = msg || null; mc.form = { nom: "", type: "", commentaire: "" }; save(); render(); }
+    document.getElementById("mcform").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var clean = function (id, n) { return document.getElementById(id).value.replace(/[\x00-\x1F\x7F]/g, " ").replace(/\s+/g, " ").trim().slice(0, n); };
+      var f = { nom: clean("mcnom", 60), type: clean("mctype", 60), commentaire: clean("mccom", 255) }, err = [];
+      if (!f.nom) { err.push("Le nom de la machine est obligatoire."); }
+      else if (f.nom.indexOf(" - ") >= 0) { err.push("Le nom ne doit pas contenir « - » entouré d'espaces (il sert de séparateur dans l'historique)."); }
+      S.machines.forEach(function (m, i) { if (i !== mc.edit && m.nom.toLowerCase() === f.nom.toLowerCase()) { err.push("Une machine s'appelle déjà « " + m.nom + " »."); } });
+      if (err.length) { mc.err = err; mc.flash = null; mc.form = f; render(); return; }
+      if (mc.edit >= 0) {
+        var m = S.machines[mc.edit], old = m.nom, used = mcUsage(old).nb;
+        m.nom = f.nom; m.type = f.type; m.commentaire = f.commentaire;
+        reset("Machine « " + f.nom + " » enregistrée." + (old !== f.nom && used ? " Les mouvements déjà enregistrés gardent l'ancien nom « " + old + " »." : ""));
+      } else {
+        S.machines.push({ nom: f.nom, type: f.type, commentaire: f.commentaire, actif: true });
+        reset("Machine « " + f.nom + " » ajoutée. Elle est proposée sur la page de scan.");
+      }
+    });
+    var c = document.getElementById("mccancel"); if (c) { c.addEventListener("click", function () { reset(); }); }
+    document.querySelectorAll("[data-mcedit]").forEach(function (b) { b.addEventListener("click", function () { var i = +b.getAttribute("data-mcedit"), m = S.machines[i]; mc.edit = i; mc.err = []; mc.flash = null; mc.form = { nom: m.nom, type: m.type || "", commentaire: m.commentaire || "" }; render(); window.scrollTo(0, 0); }); });
+    document.querySelectorAll("[data-mctoggle]").forEach(function (b) { b.addEventListener("click", function () {
+      var m = S.machines[+b.getAttribute("data-mctoggle")];
+      if (m.actif && !confirm("Mettre " + m.nom + " hors service ? Elle ne sera plus proposée au scan.")) { return; }
+      m.actif = !m.actif; if (!m.actif && S.of.machine === m.nom) { S.of.machine = ""; }
+      reset("Machine « " + m.nom + " » " + (m.actif ? "remise en service : elle est de nouveau proposée au scan." : "mise hors service : elle n'est plus proposée au scan (son historique est conservé)."));
+    }); });
+    document.querySelectorAll("[data-mcdel]").forEach(function (b) { b.addEventListener("click", function () {
+      var i = +b.getAttribute("data-mcdel"), m = S.machines[i];
+      if (!confirm("Supprimer définitivement la machine " + m.nom + " ?")) { return; }
+      S.machines.splice(i, 1); if (S.of.machine === m.nom) { S.of.machine = ""; }
+      reset("Machine « " + m.nom + " » supprimée.");
+    }); });
   }
 
   /* ---------- Durée des ruptures (comme ruptures.php) ---------- */
@@ -1434,9 +1516,9 @@ svg text { font-family: var(--font-body); }
     apply(); input.focus();
   }
 
-  var VIEWS = { accueil: vAccueil, catalogue: vCat, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto };
-  var LABELS = { accueil: "Accueil", catalogue: "Catalogue des outils", scan: "Scan entrée / sortie", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)" };
-  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan entrée / sortie", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
+  var VIEWS = { accueil: vAccueil, catalogue: vCat, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto, machines: vMachines };
+  var LABELS = { accueil: "Accueil", catalogue: "Catalogue des outils", scan: "Scan : picking, retour, réception", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)", machines: "Machines" };
+  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique", "machines"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
@@ -1458,12 +1540,13 @@ svg text { font-family: var(--font-body); }
     if (v === "supprimer") { wireSup(); }
     if (v === "saisie") { wireSaisie(); }
     if (v === "historique") { wireHisto(); }
+    if (v === "machines") { wireMachines(); }
   }
 
   document.getElementById("reset").addEventListener("click", function () {
-    S = fresh(); ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
+    S = fresh(); ensureMachines(); mc = { edit: -1, err: [], flash: null, form: { nom: "", type: "", commentaire: "" } }; ofFlash = null; ofResult = null; ofUndoInfo = null; ofCands = null; save(); render();
   });
-  window.addEventListener("hashchange", function () { sup.flash = null; ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", function () { sup.flash = null; mc.flash = null; mc.err = []; ofFlash = null; ofResult = null; ofCands = null; render(); window.scrollTo(0, 0); });
   render();
 })();
 </script>
