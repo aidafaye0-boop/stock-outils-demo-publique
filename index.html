@@ -1518,7 +1518,7 @@ svg text { font-family: var(--font-body); }
 
   var VIEWS = { accueil: vAccueil, catalogue: vCat, scan: vOf, of: vOf, seuils: vSeuils, utilisation: vUtil, ruptures: vRupt, etiquettes: vEtiq, excel: vXl, supprimer: vSup, saisie: vSaisie, historique: vHisto, machines: vMachines };
   var LABELS = { accueil: "Accueil", catalogue: "Catalogue des outils", scan: "Scan : picking, retour, réception", seuils: "Seuils", ruptures: "Ruptures", utilisation: "Utilisation", saisie: "Saisie rapide", historique: "Historique", etiquettes: "Étiquettes", excel: "Excel", supprimer: "Supprimer (administration)", machines: "Machines" };
-  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan", ["scan"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique", "machines"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
+  var GROUPS = [["Accueil", ["accueil"]], ["Catalogue", ["catalogue"]], ["Scan", ["scan"]], ["Machines", ["machines"]], ["Analyse", ["seuils", "ruptures", "utilisation"]], ["Stock", ["saisie", "historique"]], ["Outils", ["etiquettes", "excel", "supprimer"]]];
   function current() { var h = location.hash.replace("#", ""); return VIEWS[h] ? h : "accueil"; }
 
   function render() {
